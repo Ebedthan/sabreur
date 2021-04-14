@@ -25,15 +25,17 @@ extern crate log;
 extern crate niffler;
 extern crate relative_path;
 extern crate num_cpus;
+extern crate regex;
 
 use clap::{App, Arg, SubCommand};
 use log::info;
+use std::collections::HashMap;
+use std::io;
 
 /* mod declaration */
 mod utils;
 
-
-fn main() {
+fn main() -> io::Result<()> {
     
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
@@ -110,8 +112,17 @@ fn main() {
         let infile = matches.value_of("file").unwrap();
         let barcode = matches.value_of("barcode").unwrap();
         let unknown = matches.value_of("unknown").unwrap();
-        println!("{}", format!("infile: {}, barcode: {}, unknown: {}, cpus: {}",
-                    infile, barcode, unknown, cpus));
+
+        let mut barcode_info = HashMap::new();
+
+        let barcode_reader = utils::read_barcode(barcode).unwrap();
+
+        let barcode_fields = utils::split_line(&barcode_reader);
+        
+        for b_vec in barcode_fields.iter() {
+            barcode_info.insert(utils::BarcodeOut::new(b_vec[2], b_vec[1]), b_vec[0]);
+        }
+
     } else if let Some(matches) = matches.subcommand_matches("pe") {
         let infile = matches.value_of("forward").unwrap();
         let reverse = matches.value_of("reverse").unwrap();
@@ -120,5 +131,8 @@ fn main() {
         println!("{}", format!("infile: {}, reverse: {}, barcode: {}, unknown: {}, cpus: {}",
                     infile, reverse, barcode, unknown, cpus));
     }
+    
     info!("Finished");
+
+    Ok(())
 }

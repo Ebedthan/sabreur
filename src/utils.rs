@@ -23,7 +23,10 @@ use anyhow::Result;
 
 use std::io;
 use std::path::Path;
-// use std::fs::File;
+use std::fs::File;
+use std::io::prelude::*;
+use regex::Regex;
+
 
 /* ***********************
  * setup logging function
@@ -131,5 +134,33 @@ pub fn is_fastx(f: String) -> Result<(), String> {
         return Ok(());
     } else {
         return Err("Input file is not fasta nor fastq formatted".to_string());
+    }
+}
+
+pub fn read_barcode(s: &str) -> io::Result<String> {
+    let mut file = File::open(s)?;
+    let mut s = String::new();
+    file.read_to_string(&mut s)?;
+    Ok(s)
+}
+
+pub fn split_line<'a>(s: &'a str) -> Vec<Vec<&'a str>> {
+    let tab_re = Regex::new(r"\t").unwrap();
+    s.lines().map(|line| {
+        tab_re.split(line).collect()
+    }).collect()
+}
+
+
+#[derive(Hash, Eq, PartialEq, Debug)]
+pub struct BarcodeOut {
+    forward: String,
+    reverse: String,
+}
+
+impl BarcodeOut {
+    /// Create a new Barcode out.
+    pub fn new(forward: &str, reverse:&str) -> BarcodeOut {
+        BarcodeOut {forward: forward.to_string(), reverse: reverse.to_string() }
     }
 }
