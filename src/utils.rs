@@ -25,12 +25,12 @@ use std::io;
 use std::path::Path;
 use std::fs::File;
 use std::io::prelude::*;
+use std::process;
 use regex::Regex;
 
 
-/* ***********************
- * setup logging function
- * ***********************/
+/// setup_logging function set up the logging using fern
+/// crate. Takes as input the quiet arg for setup.
 pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     let mut base_config = fern::Dispatch::new();
 
@@ -80,8 +80,7 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-/* ***********************
- * read_gz function
+// read_gz function
 
 
 pub fn read_file(p: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::Format), > {
@@ -91,9 +90,78 @@ pub fn read_file(p: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::F
 
     let (reader, compression) = niffler::get_reader(raw_in)
         .expect("Cannot read input fasta file");
-    Ok((reader, compression))
-    
+
+    match compression {
+        niffler::compression::Format::Gzip => Ok((reader, compression)),
+        _ => { 
+            eprintln!("Provided file is not gzipped.");
+            process::exit(1)
+        },
+    }
+
 }
+
+/// is_fastx function takes a filename as input and returns
+/// an Error if the filename does not have correct fasta
+/// file extension. 
+pub fn is_fastx(f: String) -> Result<(), String> {
+    let ext = vec!["fa", "fas", "fasta", "fastq", "fq", "gz"];
+    
+    let path = Path::new(&f);
+    let f_ext = path.extension().unwrap();
+    let f_last = f_ext.to_str().unwrap();
+
+    if ext.contains(&f_last){
+        return Ok(());
+    } else {
+        return Err("Input file is not fasta nor fastq formatted".to_string());
+    }
+}
+
+/// read_barcode function read the barcode file provided
+/// into a String.
+pub fn read_barcode(s: &str) -> io::Result<String> {
+    let mut file = File::open(s)?;
+    let mut s = String::new();
+    file.read_to_string(&mut s)?;
+    Ok(s)
+}
+
+/// split_line function split the line from read_barcode
+/// function by tab and return a vec of vec of &str.
+pub fn split_line<'a>(s: &'a str) -> Vec<Vec<&'a str>> {
+    let tab_re = Regex::new(r"\t").unwrap();
+    s.lines().map(|line| {
+        tab_re.split(line).collect()
+    }).collect()
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
+pub struct SeBarcodeOut {
+    forward: String,
+}
+
+impl SeBarcodeOut {
+    /// Create a new Single end Barcode out.
+    pub fn new(forward: &str) -> SeBarcodeOut {
+        SeBarcodeOut {forward: forward.to_string() }
+    }
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
+pub struct PeBarcodeOut {
+    forward: String,
+    reverse: String,
+}
+
+impl PeBarcodeOut {
+    /// Create a new Paired end Barcode out.
+    pub fn new(forward: &str, reverse:&str) -> PeBarcodeOut {
+        PeBarcodeOut {forward: forward.to_string(), reverse: reverse.to_string() }
+    }
+}
+
+pub fn se_append_seq(f: &SeBarcodeOut, r: bio::io::fasta::Record) {}
 
 #[cfg(test)]
 mod tests {
@@ -120,47 +188,5 @@ mod tests {
             assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG");
         }
         
-    }
-}
-*/
-pub fn is_fastx(f: String) -> Result<(), String> {
-    let ext = vec!["fa", "fas", "fasta", "fastq", "fq", "gz"];
-    
-    let path = Path::new(&f);
-    let f_ext = path.extension().unwrap();
-    let f_last = f_ext.to_str().unwrap();
-
-    if ext.contains(&f_last){
-        return Ok(());
-    } else {
-        return Err("Input file is not fasta nor fastq formatted".to_string());
-    }
-}
-
-pub fn read_barcode(s: &str) -> io::Result<String> {
-    let mut file = File::open(s)?;
-    let mut s = String::new();
-    file.read_to_string(&mut s)?;
-    Ok(s)
-}
-
-pub fn split_line<'a>(s: &'a str) -> Vec<Vec<&'a str>> {
-    let tab_re = Regex::new(r"\t").unwrap();
-    s.lines().map(|line| {
-        tab_re.split(line).collect()
-    }).collect()
-}
-
-
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub struct BarcodeOut {
-    forward: String,
-    reverse: String,
-}
-
-impl BarcodeOut {
-    /// Create a new Barcode out.
-    pub fn new(forward: &str, reverse:&str) -> BarcodeOut {
-        BarcodeOut {forward: forward.to_string(), reverse: reverse.to_string() }
     }
 }

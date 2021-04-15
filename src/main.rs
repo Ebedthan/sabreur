@@ -15,8 +15,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
- */
+*/
 
+/* extern crate declaration */
 extern crate bio;
 extern crate chrono;
 extern crate clap;
@@ -27,13 +28,18 @@ extern crate relative_path;
 extern crate num_cpus;
 extern crate regex;
 
+/* modules declaration */
+use bio::io::fasta;
 use clap::{App, Arg, SubCommand};
 use log::info;
 use std::collections::HashMap;
 use std::io;
+use std::path::Path;
 
 /* mod declaration */
 mod utils;
+
+
 
 fn main() -> io::Result<()> {
     
@@ -70,12 +76,14 @@ fn main() -> io::Result<()> {
                             .short("f")
                             .long("forward")
                             .value_name("FILE")
+                            .validator(utils::is_fastx)
                             .required(true))
                         .arg(Arg::with_name("reverse")
                             .help("Input reverse fasta or fastq file. Can be gzipped.")
                             .short("r")
                             .long("reverse")
                             .value_name("FILE")
+                            .validator(utils::is_fastx)
                             .required(true))
                         .arg(Arg::with_name("barcode")
                             .help("Input barcode file.")
@@ -100,28 +108,61 @@ fn main() -> io::Result<()> {
             .long("quiet")
             .takes_value(false))
         .get_matches();
-    
-    // Verbosity
+
+    // START ----------------------------------------------------------------
+    // Handle verbosity setting
     let quiet = matches.is_present("quiet");
     utils::setup_logging(quiet).expect("Failed to initialize logging.");
 
-    // START ----------------------------------------------------------------
-    info!("sabreur v0.1 starting up!");
-    let cpus = matches.value_of("cpus").unwrap();
+    // Handle cpus 
+    let acpus = matches.value_of("cpus").unwrap();
+    let mut cpus = acpus.parse::<u8>().unwrap();
+    let n_cpus = num_cpus::get();
+
+    if cpus == 0 {
+        cpus = n_cpus as u8;
+    } else if cpus > n_cpus as u8 {
+        cpus = n_cpus as u8;
+    } else {
+        cpus = cpus;
+    }
+
+    // Single-end program
     if let Some(matches) = matches.subcommand_matches("se") {
+
+        // Read args
         let infile = matches.value_of("file").unwrap();
         let barcode = matches.value_of("barcode").unwrap();
         let unknown = matches.value_of("unknown").unwrap();
 
+        // Read data from barcode file
         let mut barcode_info = HashMap::new();
-
         let barcode_reader = utils::read_barcode(barcode).unwrap();
-
         let barcode_fields = utils::split_line(&barcode_reader);
-        
+    
         for b_vec in barcode_fields.iter() {
-            barcode_info.insert(utils::BarcodeOut::new(b_vec[2], b_vec[1]), b_vec[0]);
+            barcode_info.insert(utils::SeBarcodeOut::new(b_vec[1]), b_vec[0]);
         }
+
+        // Look for exact match of barcode at the beginning of sequence
+        let inpath = Path::new(infile);
+        let (fa_reader, _compression) = utils::read_file(inpath).unwrap();
+        let mut fa_records = fasta::Reader::new(fa_reader).records();
+
+        while let Some(Ok(record)) = fa_records.next() {
+            {
+                let seq = String::from_utf8_lossy(record.seq());
+            }
+            for (filename, bc) in &barcode_info {
+                let itt = bc.chars().count();
+                match &seq[..itt] {
+                    bc => utils::se_append_seq(filename, record),
+                    _ => continue,
+                }
+
+            }
+        }
+    
 
     } else if let Some(matches) = matches.subcommand_matches("pe") {
         let infile = matches.value_of("forward").unwrap();
