@@ -9,7 +9,7 @@ extern crate num_cpus;
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
 
 use bio::io;
@@ -118,9 +118,6 @@ fn main() {
     } else if forward_file_ext == utils::FileType::Fastq {
         u_str = "unknown.fq"
     }
-    let mut u_path = PathBuf::from("");
-    u_path.push(output);
-    u_path.push(u_str);
 
 
     // Read data from barcode file
@@ -149,11 +146,11 @@ fn main() {
     // First two options are single-end mode and last two paired-end mode
     if forward_file_ext == utils::FileType::Fasta && reverse == "" {
         let fa_forward_reader = io::fasta::Reader::new(forward_reader);
-        utils::se_fa_demux(fa_forward_reader, &barcode_info, u_path.to_str().unwrap())
+        utils::se_fa_demux(fa_forward_reader, &barcode_info, u_str, output)
             .expect("Cannot demutiplex file");
     } else if forward_file_ext == utils::FileType::Fastq && reverse == "" {
         let fq_forward_reader = io::fastq::Reader::new(forward_reader);
-        utils::se_fq_demux(fq_forward_reader, &barcode_info, u_path.to_str().unwrap())
+        utils::se_fq_demux(fq_forward_reader, &barcode_info, u_str, output)
             .expect("Cannot demultiplex file");
     } else if forward_file_ext == utils::FileType::Fasta && reverse_file_ext == utils::FileType::Fasta {
         let fa_forward_reader = io::fasta::Reader::new(forward_reader);
@@ -161,7 +158,7 @@ fn main() {
         let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
                                                         .expect("Cannot read input file");
         let fa_reverse_reader = io::fasta::Reader::new(reverse_reader);
-        utils::pe_fa_demux(fa_forward_reader, fa_reverse_reader, &barcode_info, u_path.to_str().unwrap())
+        utils::pe_fa_demux(fa_forward_reader, fa_reverse_reader, &barcode_info, u_str, output)
             .expect("Cannot demultiplex file");
     } else if forward_file_ext == utils::FileType::Fastq && reverse_file_ext == utils::FileType::Fastq {
         let fq_forward_reader = io::fastq::Reader::new(forward_reader);
@@ -169,7 +166,7 @@ fn main() {
         let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
                                                         .expect("Cannot read input file");
         let fq_reverse_reader = io::fastq::Reader::new(reverse_reader);
-        utils::pe_fq_demux(fq_forward_reader, fq_reverse_reader, &barcode_info, u_path.to_str().unwrap())
+        utils::pe_fq_demux(fq_forward_reader, fq_reverse_reader, &barcode_info, u_str, output)
             .expect("Cannot demultiplex file");
     }
 
