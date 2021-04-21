@@ -116,7 +116,7 @@ fn main() {
     // Read data from barcode file
     let mut barcode_info: utils::Barcode = HashMap::new();
     let barcode_reader = utils::read_file_to_string(barcode).unwrap();
-    let barcode_fields = utils::split_line(&barcode_reader);
+    let barcode_fields = utils::split_line_by_tab(&barcode_reader);
 
     for b_vec in barcode_fields.iter() {
         if b_vec.len() == 2 {
