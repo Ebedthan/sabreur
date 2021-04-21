@@ -1,23 +1,8 @@
-/*
-Copyright (c) 2021 Anicet Ebou <anicet.ebou@gmail.com>
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+// Copyright 2021 Anicet Ebou.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed except according
+// to those terms.
 
-/* extern crate declaration */
 extern crate bio;
 extern crate chrono;
 extern crate clap;
@@ -28,75 +13,44 @@ extern crate relative_path;
 extern crate num_cpus;
 extern crate regex;
 
-/* modules declaration */
-use bio::io::fasta;
-use clap::{App, Arg, SubCommand};
-use log::info;
-use std::collections::HashMap;
-use std::io;
-use std::path::Path;
 
-/* mod declaration */
+use clap::{App, Arg};
+use log::{info, error};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+
 mod utils;
 
-
-
-fn main() -> io::Result<()> {
+fn main() {
     
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
         .version("v0.1.0")
-        .author("Anicet Ebou <anicet.ebou@gmail.com>")
+        .author("Anicet Ebou, anicet.ebou@gmail.com")
         .about("A barcode demultiplexing tool")
-        .subcommand(SubCommand::with_name("se")
-                    .about("single-end mode")
-                    .arg(Arg::with_name("file")
-                        .help("Input fasta or fastq file. Can be gzipped.")
-                        .short("f")
-                        .long("file")
-                        .value_name("FILE")
-                        .validator(utils::is_fastx)
-                        .required(true))
-                    .arg(Arg::with_name("barcode")
-                        .help("Input barcode file.")
-                        .short("b")
-                        .long("barcode")
-                        .value_name("FILE")
-                        .required(true))
-                    .arg(Arg::with_name("unknown")
-                        .help("Output file for sequence with no barcodes")
-                        .short("u")
-                        .long("unknown")
-                        .value_name("FILE")
-                        .required(true)))
-        .subcommand(SubCommand::with_name("pe")
-                        .about("paired-end mode")
-                        .arg(Arg::with_name("forward")
-                            .help("Input forward fasta or fastq file. Can be gzipped.")
-                            .short("f")
-                            .long("forward")
-                            .value_name("FILE")
-                            .validator(utils::is_fastx)
-                            .required(true))
-                        .arg(Arg::with_name("reverse")
-                            .help("Input reverse fasta or fastq file. Can be gzipped.")
-                            .short("r")
-                            .long("reverse")
-                            .value_name("FILE")
-                            .validator(utils::is_fastx)
-                            .required(true))
-                        .arg(Arg::with_name("barcode")
-                            .help("Input barcode file.")
-                            .short("b")
-                            .long("barcode")
-                            .value_name("FILE")
-                            .required(true))
-                        .arg(Arg::with_name("unknown")
-                            .help("Output file for sequence with no barcodes")
-                            .short("u")
-                            .long("unknown")
-                            .value_name("FILE")
-                            .required(true)))
+        .arg(Arg::with_name("FORWARD")
+            .help("Input forward fasta or fastq file. Can be gzipped.")
+            .validator(utils::is_fastx)
+            .required(true)
+            .index(1))
+        .arg(Arg::with_name("REVERSE")
+            .help("Input reverse fasta or fastq file. Can be gzipped.")
+            .validator(utils::is_fastx)
+            .index(2))
+        .arg(Arg::with_name("barcode")
+            .help("Input barcode file.")
+            .short("b")
+            .long("barcode")
+            .value_name("FILE")
+            .required(true))
+        .arg(Arg::with_name("output")
+            .help("Output folder")
+            .short("o")
+            .long("out")
+            .value_name("FOLDER")
+            .default_value("sabreur_out"))
         .arg(Arg::with_name("cpus")
             .help("Specify the number of threads")
             .short("c")
@@ -127,53 +81,58 @@ fn main() -> io::Result<()> {
         cpus = cpus;
     }
 
-    // Single-end program
-    if let Some(matches) = matches.subcommand_matches("se") {
+    // Read args
+    let forward = matches.value_of("FORWARD").unwrap();
+    println!("{}", cpus);
 
-        // Read args
-        let infile = matches.value_of("file").unwrap();
-        let barcode = matches.value_of("barcode").unwrap();
-        let unknown = matches.value_of("unknown").unwrap();
-
-        // Read data from barcode file
-        let mut barcode_info = HashMap::new();
-        let barcode_reader = utils::read_barcode(barcode).unwrap();
-        let barcode_fields = utils::split_line(&barcode_reader);
-    
-        for b_vec in barcode_fields.iter() {
-            barcode_info.insert(utils::SeBarcodeOut::new(b_vec[1]), b_vec[0]);
-        }
-
-        // Look for exact match of barcode at the beginning of sequence
-        let inpath = Path::new(infile);
-        let (fa_reader, _compression) = utils::read_file(inpath).unwrap();
-        let mut fa_records = fasta::Reader::new(fa_reader).records();
-
-        while let Some(Ok(record)) = fa_records.next() {
-            {
-                let seq = String::from_utf8_lossy(record.seq());
-            }
-            for (filename, bc) in &barcode_info {
-                let itt = bc.chars().count();
-                match &seq[..itt] {
-                    bc => utils::se_append_seq(filename, record),
-                    _ => continue,
-                }
-
-            }
-        }
-    
-
-    } else if let Some(matches) = matches.subcommand_matches("pe") {
-        let infile = matches.value_of("forward").unwrap();
-        let reverse = matches.value_of("reverse").unwrap();
-        let barcode = matches.value_of("barcode").unwrap();
-        let unknown = matches.value_of("unknown").unwrap();
-        println!("{}", format!("infile: {}, reverse: {}, barcode: {}, unknown: {}, cpus: {}",
-                    infile, reverse, barcode, unknown, cpus));
+    let mut reverse = "";
+    if matches.is_present("REVERSE") {
+        reverse = matches.value_of("REVERSE").unwrap();
     }
-    
+
+    let barcode = matches.value_of("barcode").unwrap();
+    let output = matches.value_of("output").unwrap();
+
+    // Check File type: fasta or fastq
+    if reverse != "" && utils::get_file_type(forward).unwrap() != utils::get_file_type(reverse).unwrap() {
+        error!("Mismatched type of file supplied: one is fasta while other is fastq");
+    }
+
+    // Create output directory
+    fs::create_dir(Path::new(output)).expect("");
+
+    // Define filename for unknown reads
+    let file_ext = utils::get_file_type(forward).unwrap();
+
+    let mut u_str = "";
+    if file_ext == utils::FileType::Fasta {
+        u_str = "unknown.fa"
+    } else if file_ext == utils::FileType::Fastq {
+        u_str = "unknown.fq"
+    }
+    let u_path: PathBuf = [output, u_str].iter().collect();
+    let _unknown = fs::File::create(u_path);
+
+    // Read data from barcode file
+    let mut barcode_info: utils::Barcode = HashMap::new();
+    let barcode_reader = utils::read_file_to_string(barcode).unwrap();
+    let barcode_fields = utils::split_line(&barcode_reader);
+
+    for b_vec in barcode_fields.iter() {
+        if b_vec.len() == 2 {
+            barcode_info.insert(
+                b_vec[0],
+                utils::BarcodeOut {forward: b_vec[1], reverse: ""}
+            );
+        } else if b_vec.len() == 3 {
+            barcode_info.insert(
+                b_vec[0],
+                utils::BarcodeOut {forward: b_vec[1], reverse: b_vec[2]}
+            );
+        }
+
+    }
+
     info!("Finished");
 
-    Ok(())
 }

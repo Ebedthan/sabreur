@@ -1,37 +1,33 @@
-/*
-Copyright (c) 2021 Anicet Ebou <anicet.ebou@gmail.com>
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
- */
+// Copyright 2021 Anicet Ebou.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed except according
+// to those terms.
 
-/* crate use */
-use anyhow::Result;
-
-
-use std::io;
-use std::path::Path;
+use std::collections::HashMap;
 use std::fs::File;
+use std::fs::OpenOptions;
+use std::io;
 use std::io::prelude::*;
+use std::path::Path;
 use std::process;
+
+extern crate tempfile;
+
+use anyhow::Result;
+use bio::io::fasta;
 use regex::Regex;
 
+// setup_logging ------------------------------------------------------------
 
-/// setup_logging function set up the logging using fern
-/// crate. Takes as input the quiet arg for setup.
-pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
+/// Set up the program logging using fern crate.
+/// 
+/// # Example
+/// ```rust
+/// let quiet: bool = true;
+/// setup_logging(quiet).expect("Cannot initialize program logging")
+/// ```
+///
+pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {  
     let mut base_config = fern::Dispatch::new();
 
     base_config = match quiet {
@@ -80,9 +76,18 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-// read_gz function
+// read_gz function ---------------------------------------------------------
 
-
+/// Get reader and compression format of file
+/// 
+/// # Example
+/// ```rust
+/// # use std::path::Path;
+/// 
+/// let path = Path::new("path/to/file");
+/// let (reader, compression) = read_file(&path);
+/// ```
+/// 
 pub fn read_file(p: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::Format), > {
     let raw_in = Box::new(io::BufReader::new(
         File::open(p)?
@@ -101,9 +106,16 @@ pub fn read_file(p: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::F
 
 }
 
-/// is_fastx function takes a filename as input and returns
-/// an Error if the filename does not have correct fasta
-/// file extension. 
+// is_fastx function --------------------------------------------------------
+
+/// Validate file type from file extension
+/// 
+/// # Example
+/// ```rust
+/// let filename = "myfile.fa.gz".to_string();
+/// assert!(is_fastx(filename).is_ok())
+/// ```
+/// 
 pub fn is_fastx(f: String) -> Result<(), String> {
     let ext = vec!["fa", "fas", "fasta", "fastq", "fq", "gz"];
     
@@ -118,17 +130,61 @@ pub fn is_fastx(f: String) -> Result<(), String> {
     }
 }
 
-/// read_barcode function read the barcode file provided
-/// into a String.
-pub fn read_barcode(s: &str) -> io::Result<String> {
+// get_file_type function ---------------------------------------------------
+
+// FileType structure
+#[derive(Debug, PartialEq)]
+pub enum FileType {
+    Fasta,
+    Fastq,
+}
+
+/// Get file type from filename
+/// 
+/// # Example
+/// ```rust
+/// let filename = "myfile.fq";
+/// let file_type = get_file_type(filename);
+/// ```
+/// 
+pub fn get_file_type(filename: &str) -> Option<FileType> {
+    if filename.contains(".fastq") || filename.contains(".fq") {
+        Some(FileType::Fastq)
+    } else if filename.contains(".fasta") || filename.contains(".fa") || filename.contains(".fas") {
+        Some(FileType::Fasta)
+    } else {
+        None
+    }
+}
+
+
+// read_file_to_string function ---------------------------------------------
+
+/// Read a file into a string
+/// 
+/// # Example
+/// ```rust
+/// let filename = "myfile.txt";
+/// let file_as_string = read_file_to_string(filename);
+/// ```
+/// 
+pub fn read_file_to_string(s: &str) -> io::Result<String> {
     let mut file = File::open(s)?;
     let mut s = String::new();
     file.read_to_string(&mut s)?;
     Ok(s)
 }
 
-/// split_line function split the line from read_barcode
-/// function by tab and return a vec of vec of &str.
+// split_line function ------------------------------------------------------
+
+/// Split a &str at each \t
+/// 
+/// # Example
+/// ```rust
+/// let mystring = "hello\tworld";
+/// let string_fields = split_line(mystring);
+/// ```
+/// 
 pub fn split_line<'a>(s: &'a str) -> Vec<Vec<&'a str>> {
     let tab_re = Regex::new(r"\t").unwrap();
     s.lines().map(|line| {
@@ -136,36 +192,65 @@ pub fn split_line<'a>(s: &'a str) -> Vec<Vec<&'a str>> {
     }).collect()
 }
 
+
+// Barcode data structure ---------------------------------------------------
 #[derive(Hash, Eq, PartialEq, Debug)]
-pub struct SeBarcodeOut {
-    forward: String,
+pub struct BarcodeOut<'a> {
+    pub forward: &'a str,
+    pub reverse: &'a str,
 }
 
-impl SeBarcodeOut {
-    /// Create a new Single end Barcode out.
-    pub fn new(forward: &str) -> SeBarcodeOut {
-        SeBarcodeOut {forward: forward.to_string() }
-    }
+pub type Barcode<'a> = HashMap<&'a str, BarcodeOut<'a>>;
+
+
+// write_to_fa function -----------------------------------------------------
+
+/// Write to provided data to a fasta file in append mode
+/// 
+/// # Example
+/// ```rust
+/// 
+/// # use bio::io::fasta;
+/// let filename = "myfile.fa";
+/// let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
+/// write_to_fa(filename, &record);
+/// ```
+/// 
+pub fn write_to_fa<'a, 'b>(filename: &'a str, record: &'b fasta::Record) -> Result<()>{
+    let file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(filename)?;
+    let handle = io::BufWriter::new(file);
+    let mut writer = fasta::Writer::new(handle);
+    let _write_res = writer.write_record(&record)
+                        .expect("Cannot write to fasta file");
+
+    Ok(())
 }
 
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub struct PeBarcodeOut {
-    forward: String,
-    reverse: String,
-}
-
-impl PeBarcodeOut {
-    /// Create a new Paired end Barcode out.
-    pub fn new(forward: &str, reverse:&str) -> PeBarcodeOut {
-        PeBarcodeOut {forward: forward.to_string(), reverse: reverse.to_string() }
-    }
-}
-
-pub fn se_append_seq(f: &SeBarcodeOut, r: bio::io::fasta::Record) {}
-
+// Tests --------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
+
+
+    #[test]
+    fn test_write_to_fa_is_ok() {
+        let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
+
+        assert!((write_to_fa("tests/mytmp.fa", &record)).is_ok());
+        let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
+                                .expect("[fn test_write_to_fa_is_ok] Cannot read file.")
+                                .records();
+        while let Some(Ok(rec)) = fa_records.next() {
+            assert_eq!(rec.id(), "id_str");
+            assert_eq!(rec.desc(), Some("desc"));
+            assert_eq!(rec.seq().to_vec(), b"ATCGCCG");
+        }
+        std::fs::remove_file("tests/mytmp.fa")
+                    .expect("[fn test_write_to_fa_is_ok] Cannot remove tmp file");
+    }
 
     #[test]
     fn test_read_gz() {
