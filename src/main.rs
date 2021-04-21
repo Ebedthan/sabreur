@@ -4,21 +4,19 @@
 // to those terms.
 
 extern crate bio;
-extern crate chrono;
 extern crate clap;
-extern crate fern;
-extern crate log;
 extern crate niffler;
 extern crate relative_path;
 extern crate num_cpus;
-extern crate regex;
 
 
-use clap::{App, Arg};
-use log::{info, error};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use bio::io;
+use clap::{App, Arg};
+use log::{info, error};
 
 
 mod utils;
@@ -94,43 +92,73 @@ fn main() {
     let output = matches.value_of("output").unwrap();
 
     // Check File type: fasta or fastq
-    if reverse != "" && utils::get_file_type(forward).unwrap() != utils::get_file_type(reverse).unwrap() {
+    let forward_file_ext = utils::get_file_type(forward).unwrap();
+    let reverse_file_ext = utils::get_file_type(reverse).unwrap();
+
+    if reverse != "" && forward_file_ext != reverse_file_ext {
         error!("Mismatched type of file supplied: one is fasta while other is fastq");
     }
 
     // Create output directory
-    fs::create_dir(Path::new(output)).expect("");
+    fs::create_dir(Path::new(output))
+        .expect("Cannot create output directory");
 
     // Define filename for unknown reads
-    let file_ext = utils::get_file_type(forward).unwrap();
-
     let mut u_str = "";
-    if file_ext == utils::FileType::Fasta {
+    if forward_file_ext == utils::FileType::Fasta {
         u_str = "unknown.fa"
-    } else if file_ext == utils::FileType::Fastq {
+    } else if forward_file_ext == utils::FileType::Fastq {
         u_str = "unknown.fq"
     }
     let u_path: PathBuf = [output, u_str].iter().collect();
-    let _unknown = fs::File::create(u_path);
+    let _unknown = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(u_path)
+                    .expect("Cannot open unknown file");
 
     // Read data from barcode file
     let mut barcode_info: utils::Barcode = HashMap::new();
-    let barcode_reader = utils::read_file_to_string(barcode).unwrap();
-    let barcode_fields = utils::split_line_by_tab(&barcode_reader);
+    let barcode_data = utils::read_file_to_string(barcode).unwrap();
+    let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
     for b_vec in barcode_fields.iter() {
         if b_vec.len() == 2 {
             barcode_info.insert(
                 b_vec[0],
-                utils::BarcodeOut {forward: b_vec[1], reverse: ""}
+                vec![b_vec[1]]
             );
         } else if b_vec.len() == 3 {
             barcode_info.insert(
                 b_vec[0],
-                utils::BarcodeOut {forward: b_vec[1], reverse: b_vec[2]}
+                vec![b_vec[1], b_vec[2]]
             );
         }
 
+    }
+
+    // Get files reader
+    let (forward_reader, _forward_compression) = utils::read_file(&Path::new(forward))
+                                                    .expect("Cannot read input file");
+    // First two options are single-end mode and last two paired-end mode
+    if forward_file_ext == utils::FileType::Fasta && reverse == "" {
+        let fa_forward_reader = io::fasta::Reader::new(forward_reader);
+        utils::se_fa_demux(fa_forward_reader, &barcode_info, u_str).expect("Cannot demutiplex file");
+    } else if forward_file_ext == utils::FileType::Fastq && reverse == "" {
+        let _fq_forward_reader = io::fastq::Reader::new(forward_reader);
+        //utils::se_fq_demux(fq_forward_reader, &barcode_info, u_str);
+    } else if forward_file_ext == utils::FileType::Fasta && reverse_file_ext == utils::FileType::Fasta {
+        let _fa_forward_reader = io::fasta::Reader::new(forward_reader);
+
+        let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
+                                                        .expect("Cannot read input file");
+        let _fa_reverse_reader = io::fasta::Reader::new(reverse_reader);
+    } else if forward_file_ext == utils::FileType::Fastq && reverse_file_ext == utils::FileType::Fastq {
+        let _fq_forward_reader = io::fastq::Reader::new(forward_reader);
+
+        let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
+                                                        .expect("Cannot read input file");
+        let _fq_reverse_reader = io::fasta::Reader::new(reverse_reader);
     }
 
     info!("Finished");

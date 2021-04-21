@@ -12,9 +12,13 @@ use std::path::Path;
 use std::process;
 
 extern crate tempfile;
+extern crate chrono;
+extern crate fern;
+extern crate log;
 
 use anyhow::Result;
-use bio::io::fasta;
+use bio::io::{fasta, fastq};
+use bio::pattern_matching::kmp::KMP;
 use regex::Regex;
 
 // setup_logging ------------------------------------------------------------
@@ -193,14 +197,8 @@ pub fn split_line_by_tab<'a>(string: &'a str) -> Vec<Vec<&'a str>> {
 }
 
 
-// Barcode data structure ---------------------------------------------------
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub struct BarcodeOut<'a> {
-    pub forward: &'a str,
-    pub reverse: &'a str,
-}
-
-pub type Barcode<'a> = HashMap<&'a str, BarcodeOut<'a>>;
+// Barcode type -------------------------------------------------------------
+pub type Barcode<'a> = HashMap<&'a str, Vec<&'a str>>;
 
 
 // write_to_fa function -----------------------------------------------------
@@ -229,11 +227,78 @@ pub fn write_to_fa<'a>(filename: &'a str, record: &'a fasta::Record) -> Result<(
     Ok(())
 }
 
+/// Write to provided data to a fastq file in append mode
+/// 
+/// # Example
+/// ```rust
+/// 
+/// # use bio::io::fastq;
+/// let filename = "myfile.fq";
+/// let record = fastq::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
+/// write_to_fq(filename, &record);
+/// ```
+/// 
+/// 
+pub fn write_to_fq<'a>(filename: &'a str, record: &'a fastq::Record) -> Result<()>{
+    let file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(filename)?;
+    let handle = io::BufWriter::new(file);
+    let mut writer = fastq::Writer::new(handle);
+    let _write_res = writer.write_record(&record)
+                        .expect("Cannot write to fasta file");
+
+    Ok(())
+}
+
+// se_fa_demux function --------------------------------------------------------
+pub fn se_fa_demux(
+    reader: fasta::Reader<std::boxed::Box<dyn std::io::Read>>, 
+    barcode_data: &Barcode,
+    unknown_file: &str) -> Result<()> {
+        
+        for record in reader.records() {
+            let record = record.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(record.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fa(value[0], &record).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fa(unknown_file, &record).expect("Cannot write to unknown file");
+            }
+        }
+
+        Ok(())
+
+}
+
 // Tests --------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
 
+
+    #[test]
+    fn test_se_fa_demux() {
+        let p = Path::new("tests/test2.fa.gz");
+        let (fr, _cmp) = read_file(&p).expect("Cannot open");
+        let reader = fasta::Reader::new(fr);
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("ACCGTA", vec!["tests/id1.fa"]);
+        bc_data.insert("ATTGTT", vec!["tests/id2.fa"]);
+
+        assert!(se_fa_demux(reader, &bc_data, "tests/unknown.fa").is_ok());
+
+        std::fs::remove_file("tests/id1.fa").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/id2.fa").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/unknown.fa").expect("Cannot delete tmp file");
+    }
 
     #[test]
     fn test_write_to_fa_is_ok() {
