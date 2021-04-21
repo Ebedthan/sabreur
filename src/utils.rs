@@ -11,10 +11,10 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process;
 
-extern crate tempfile;
 extern crate chrono;
 extern crate fern;
 extern crate log;
+extern crate niffler;
 
 use anyhow::Result;
 use bio::io::{fasta, fastq};
@@ -275,7 +275,115 @@ pub fn se_fa_demux(
         }
 
         Ok(())
+}
 
+// se_fq_demux function --------------------------------------------------------
+pub fn se_fq_demux(
+    reader: fastq::Reader<std::boxed::Box<dyn std::io::Read>>, 
+    barcode_data: &Barcode,
+    unknown_file: &str) -> Result<()> {
+        
+        for record in reader.records() {
+            let record = record.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(record.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fq(value[0], &record).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fq(unknown_file, &record).expect("Cannot write to unknown file");
+            }
+        }
+
+        Ok(())
+}
+
+// pe_fa_demux function --------------------------------------------------------
+pub fn pe_fa_demux(
+    forward_reader: fasta::Reader<std::boxed::Box<dyn std::io::Read>>,
+    reverse_reader: fasta::Reader<std::boxed::Box<dyn std::io::Read>>, 
+    barcode_data: &Barcode,
+    unknown_file: &str) -> Result<()> {
+        
+        for f_rec in forward_reader.records() {
+            let f_rec = f_rec.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(f_rec.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fa(value[0], &f_rec).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fa(unknown_file, &f_rec).expect("Cannot write to unknown file");
+            }
+        }
+
+        for r_rec in reverse_reader.records() {
+            let r_rec = r_rec.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(r_rec.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fa(value[0], &r_rec).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fa(unknown_file, &r_rec).expect("Cannot write to unknown file");
+            }
+        }
+
+        Ok(())
+}
+
+// pe_fq_demux function --------------------------------------------------------
+pub fn pe_fq_demux(
+    forward_reader: fastq::Reader<std::boxed::Box<dyn std::io::Read>>,
+    reverse_reader: fastq::Reader<std::boxed::Box<dyn std::io::Read>>, 
+    barcode_data: &Barcode,
+    unknown_file: &str) -> Result<()> {
+        
+        for f_rec in forward_reader.records() {
+            let f_rec = f_rec.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(f_rec.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fq(value[0], &f_rec).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fq(unknown_file, &f_rec).expect("Cannot write to unknown file");
+            }
+        }
+
+        for r_rec in reverse_reader.records() {
+            let r_rec = r_rec.unwrap();
+            let mut matched = false;
+            for (key, value) in barcode_data {
+                let kmp = KMP::new(key.as_bytes());
+                let occ: Vec<usize> = kmp.find_all(r_rec.seq().to_vec()).collect();
+                if occ.contains(&0) {
+                    write_to_fq(value[0], &r_rec).expect("Cannot write to output file");
+                    matched = true;
+                }
+            }
+            if matched == false {
+                write_to_fq(unknown_file, &r_rec).expect("Cannot write to unknown file");
+            }
+        }
+
+        Ok(())
 }
 
 // Tests --------------------------------------------------------------------

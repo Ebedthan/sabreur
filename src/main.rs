@@ -5,19 +5,16 @@
 
 extern crate bio;
 extern crate clap;
-extern crate niffler;
-extern crate relative_path;
 extern crate num_cpus;
-
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process;
 
 use bio::io;
 use clap::{App, Arg};
 use log::{info, error};
-
 
 mod utils;
 
@@ -28,21 +25,19 @@ fn main() {
         .version("v0.1.0")
         .author("Anicet Ebou, anicet.ebou@gmail.com")
         .about("A barcode demultiplexing tool")
-        .arg(Arg::with_name("FORWARD")
-            .help("Input forward fasta or fastq file. Can be gzipped.")
-            .validator(utils::is_fastx)
+        .arg(Arg::with_name("BARCODE")
+            .help("Input barcode file [required]")
             .required(true)
             .index(1))
-        .arg(Arg::with_name("REVERSE")
-            .help("Input reverse fasta or fastq file. Can be gzipped.")
+        .arg(Arg::with_name("FORWARD")
+            .help("Input forward fasta or fastq file. Can be gzipped [required]")
             .validator(utils::is_fastx)
+            .required(true)
             .index(2))
-        .arg(Arg::with_name("barcode")
-            .help("Input barcode file.")
-            .short("b")
-            .long("barcode")
-            .value_name("FILE")
-            .required(true))
+        .arg(Arg::with_name("REVERSE")
+            .help("Input reverse fasta or fastq file. Can be gzipped")
+            .validator(utils::is_fastx)
+            .index(3))
         .arg(Arg::with_name("output")
             .help("Output folder")
             .short("o")
@@ -54,8 +49,12 @@ fn main() {
             .short("c")
             .long("cpus")
             .default_value("1"))
+        .arg(Arg::with_name("force")
+            .help("Force reuse of output directory")
+            .long("force")
+            .takes_value(false))
         .arg(Arg::with_name("quiet")
-            .help("Decrease program verbosity.")
+            .help("Decrease program verbosity")
             .short("q")
             .long("quiet")
             .takes_value(false))
@@ -88,8 +87,21 @@ fn main() {
         reverse = matches.value_of("REVERSE").unwrap();
     }
 
-    let barcode = matches.value_of("barcode").unwrap();
+    let barcode = matches.value_of("BARCODE").unwrap();
     let output = matches.value_of("output").unwrap();
+    let force = matches.is_present("force");
+
+    // Handle output dir
+    if Path::new(output).exists() && !force {
+        error!("Specified output folder already exists! Please change it using --out option or use --force to overwrite it.");
+        process::exit(1);
+    } else if Path::new(output).exists() && force {
+        info!("Reusing directory");
+        fs::remove_dir(Path::new(output)).expect("Cannot remove existing directory");
+        fs::create_dir(Path::new(output)).expect("Cannot create output directory");
+    } else if !Path::new(output).exists() {
+        fs::create_dir(Path::new(output)).expect("Cannot create output directory");
+    }
 
     // Check File type: fasta or fastq
     let forward_file_ext = utils::get_file_type(forward).unwrap();
@@ -99,10 +111,6 @@ fn main() {
         error!("Mismatched type of file supplied: one is fasta while other is fastq");
     }
 
-    // Create output directory
-    fs::create_dir(Path::new(output))
-        .expect("Cannot create output directory");
-
     // Define filename for unknown reads
     let mut u_str = "";
     if forward_file_ext == utils::FileType::Fasta {
@@ -110,12 +118,10 @@ fn main() {
     } else if forward_file_ext == utils::FileType::Fastq {
         u_str = "unknown.fq"
     }
-    let u_path: PathBuf = [output, u_str].iter().collect();
-    let _unknown = fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(u_path)
-                    .expect("Cannot open unknown file");
+    let mut u_path = PathBuf::from("");
+    u_path.push(output);
+    u_path.push(u_str);
+
 
     // Read data from barcode file
     let mut barcode_info: utils::Barcode = HashMap::new();
@@ -143,22 +149,28 @@ fn main() {
     // First two options are single-end mode and last two paired-end mode
     if forward_file_ext == utils::FileType::Fasta && reverse == "" {
         let fa_forward_reader = io::fasta::Reader::new(forward_reader);
-        utils::se_fa_demux(fa_forward_reader, &barcode_info, u_str).expect("Cannot demutiplex file");
+        utils::se_fa_demux(fa_forward_reader, &barcode_info, u_path.to_str().unwrap())
+            .expect("Cannot demutiplex file");
     } else if forward_file_ext == utils::FileType::Fastq && reverse == "" {
-        let _fq_forward_reader = io::fastq::Reader::new(forward_reader);
-        //utils::se_fq_demux(fq_forward_reader, &barcode_info, u_str);
+        let fq_forward_reader = io::fastq::Reader::new(forward_reader);
+        utils::se_fq_demux(fq_forward_reader, &barcode_info, u_path.to_str().unwrap())
+            .expect("Cannot demultiplex file");
     } else if forward_file_ext == utils::FileType::Fasta && reverse_file_ext == utils::FileType::Fasta {
-        let _fa_forward_reader = io::fasta::Reader::new(forward_reader);
+        let fa_forward_reader = io::fasta::Reader::new(forward_reader);
 
         let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
                                                         .expect("Cannot read input file");
-        let _fa_reverse_reader = io::fasta::Reader::new(reverse_reader);
+        let fa_reverse_reader = io::fasta::Reader::new(reverse_reader);
+        utils::pe_fa_demux(fa_forward_reader, fa_reverse_reader, &barcode_info, u_path.to_str().unwrap())
+            .expect("Cannot demultiplex file");
     } else if forward_file_ext == utils::FileType::Fastq && reverse_file_ext == utils::FileType::Fastq {
-        let _fq_forward_reader = io::fastq::Reader::new(forward_reader);
+        let fq_forward_reader = io::fastq::Reader::new(forward_reader);
 
         let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse))
                                                         .expect("Cannot read input file");
-        let _fq_reverse_reader = io::fasta::Reader::new(reverse_reader);
+        let fq_reverse_reader = io::fastq::Reader::new(reverse_reader);
+        utils::pe_fq_demux(fq_forward_reader, fq_reverse_reader, &barcode_info, u_path.to_str().unwrap())
+            .expect("Cannot demultiplex file");
     }
 
     info!("Finished");
