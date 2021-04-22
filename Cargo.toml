@@ -15,12 +15,15 @@ keywords = ["bioinformatics", "demultiplexing", "triming"]
 anyhow        = "1.0.40"
 bio           = "*"
 clap          = "~2.33"
-chrono        = "0.4.19"
+chrono        = "0.4"
 fern          = "0.5"
 log           = "0.4"
-niffler       = "2.3.1"
-num_cpus      = "1.13.0"
-regex         = "1.4.5"
+niffler       = "2.3"
+num_cpus      = "1.13"
+regex         = "1.4"
+
+[dev-dependencies]
+criterion = "0.3"
 
 [profile.release]
 opt-level       = 2
