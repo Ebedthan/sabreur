@@ -15,7 +15,6 @@ use std::time::Instant;
 
 use bio::io;
 use clap::{App, Arg};
-use log::{error, info};
 
 mod utils;
 
@@ -81,24 +80,21 @@ fn main() {
     let barcode = matches.value_of("BARCODE").unwrap();
     let output = matches.value_of("output").unwrap();
     let force = matches.is_present("force");
-
-    // Handle verbosity setting
     let quiet = matches.is_present("quiet");
-    utils::setup_logging(quiet).expect("Failed to initialize logging.");
 
-    info!("sabreur v0.1.0 starting up!");
+    utils::msg("sabreur v0.1.0 starting up!", quiet);
     if reverse.is_empty() {
-        info!("You are in single-end mode");
+        utils::msg("You are in single-end mode", quiet);
     } else {
-        info!("You are in paired-end mode");
+        utils::msg("You are in paired-end mode", quiet);
     }
 
     // Handle output dir
     if Path::new(output).exists() && !force {
-        error!("{}", format!("Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output));
+        utils::err(format!("Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).as_str());
         process::exit(1);
     } else if Path::new(output).exists() && force {
-        info!("{}", format!("Reusing directory {}", output));
+        utils::msg(format!("Reusing directory {}", output).as_str(), quiet);
         fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
     } else if !Path::new(output).exists() {
@@ -110,7 +106,7 @@ fn main() {
     let reverse_file_ext = utils::get_file_type(reverse).unwrap();
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
-        error!("Mismatched type of file supplied: one is fasta while other is fastq");
+        utils::err("Mismatched type of file supplied: one is fasta while other is fastq");
         process::exit(1);
     }
 
@@ -124,10 +120,10 @@ fn main() {
         utils::read_file(&Path::new(forward)).expect("Cannot read input file");
 
     if forward_compression == niffler::compression::Format::Gzip {
-        info!("Provided files are gzipped");
+        utils::msg("Provided files are gzipped", quiet);
     }
 
-    // Main
+    // Main processing of reads
     match forward_file_ext {
         utils::FileType::Fasta => match reverse.is_empty() {
             // single-end fasta mode
@@ -201,10 +197,9 @@ fn main() {
     }
 
     let duration = startime.elapsed();
-    info!(
-        "{}",
-        format_args!("{} {}", "Done! Results are available in", output)
+    utils::msg(
+        format!("{} {}", "Done! Results are available in", output).as_str(), quiet
     );
-    info!("{}", format!("Walltime: {:?}", duration));
-    info!("Thanks. Share. Come again!");
+    utils::msg(format!("Walltime: {:?}", duration).as_str(), quiet);
+    utils::msg("Thanks. Share. Come again!", quiet);
 }

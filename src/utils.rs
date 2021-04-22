@@ -11,40 +11,37 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
 
-extern crate fern;
-extern crate log;
 extern crate niffler;
 
 use anyhow::Result;
 use bio::io::{fasta, fastq};
 
-// setup_logging ------------------------------------------------------------
+// msg function -------------------------------------------------------------
 
-/// Set up the program logging using fern crate.
+/// Print info message to stdout
 ///
 /// # Example
 /// ```rust
-/// let quiet: bool = true;
-/// setup_logging(quiet).expect("Cannot initialize program logging")
+/// msg("Hello world!")
 /// ```
 ///
-pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
-    let mut base_config = fern::Dispatch::new();
+pub fn msg(message: &str, quiet: bool) {
+    if !quiet {
+        println!("[INFO] {}", message)
+    }
+}
 
-    base_config = match quiet {
-        true => base_config
-            .level(log::LevelFilter::Info)
-            .level_for("overly-verbose-target", log::LevelFilter::Warn),
-        _ => base_config.level(log::LevelFilter::Trace),
-    };
+// err function -------------------------------------------------------------
 
-    let stdout_config = fern::Dispatch::new()
-        .format(|out, message, record| out.finish(format_args!("[{}] {}", record.level(), message)))
-        .chain(io::stdout());
-
-    base_config.chain(stdout_config).apply()?;
-
-    Ok(())
+/// Print info message to stdout
+///
+/// # Example
+/// ```rust
+/// err("Error: file not found")
+/// ```
+///
+pub fn err(message: &str) {
+    eprintln!("[ERROR] {}", message)
 }
 
 // read_file function -------------------------------------------------------
@@ -141,7 +138,7 @@ pub fn read_file_to_string(filename: &str) -> io::Result<String> {
     Ok(s)
 }
 
-// split_line_by_tab function ------------------------------------------------------
+// split_line_by_tab function -----------------------------------------------
 
 /// Split a &str at each \t
 ///
@@ -240,7 +237,19 @@ pub fn write_to_fq<'a>(
     Ok(())
 }
 
-// bc_cmp fn ---------------------------------------------------------------
+// bc_cmp fn ----------------------------------------------------------------
+
+/// Compare provided barcode with a sequence
+///
+/// # Example
+/// ```rust
+///
+/// let bc = "ATCT";
+/// let seq = "ATCTGGGCCAAATTT";
+/// bc_cmp(bc, seq);
+/// 
+/// ```
+///
 pub fn bc_cmp(bc: &str, seq: &str) -> bool {
     let slice = &seq[..bc.len()];
     let mut res = false;
@@ -252,7 +261,25 @@ pub fn bc_cmp(bc: &str, seq: &str) -> bool {
     res
 }
 
-// se_fa_demux function --------------------------------------------------------
+// se_fa_demux function -----------------------------------------------------
+
+/// Demultiplex a fasta::Record of single-end file
+///
+/// # Example
+/// ```rust
+///
+/// let p = Path::new("file.fa.gz");
+/// let out = "outfolder";
+/// let (fr, cmp) = read_file(&p).expect("Cannot open");
+/// let mut records = fasta::Reader::new(fr).records();
+/// let mut bc_data: Barcode = HashMap::new();
+/// bc_data.insert("ACCGTA", vec!["id1.fa"]);
+/// bc_data.insert("ATTGTT", vec!["id2.fa"]);
+/// 
+/// assert!(se_fa_demux(&mut records, cmp, &bc_data, out).is_ok());
+/// ```
+///
+///
 pub fn se_fa_demux(
     records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
@@ -296,7 +323,25 @@ pub fn se_fa_demux(
     Ok(())
 }
 
-// se_fq_demux function --------------------------------------------------------
+// se_fq_demux function -----------------------------------------------------
+
+/// Demultiplex a fastq::Record of single-end file
+///
+/// # Example
+/// ```rust
+///
+/// let p = Path::new("file.fq.gz");
+/// let out = "outfolder";
+/// let (fr, cmp) = read_file(&p).expect("Cannot open");
+/// let mut records = fasta::Reader::new(fr).records();
+/// let mut bc_data: Barcode = HashMap::new();
+/// bc_data.insert("ACCGTA", vec!["id1.fa"]);
+/// bc_data.insert("ATTGTT", vec!["id2.fa"]);
+/// 
+/// assert!(se_fq_demux(&mut records, cmp, &bc_data, out).is_ok());
+/// ```
+///
+///
 pub fn se_fq_demux(
     records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
@@ -340,7 +385,12 @@ pub fn se_fq_demux(
     Ok(())
 }
 
-// pe_fa_demux function --------------------------------------------------------
+// pe_fa_demux function -----------------------------------------------------
+
+/// Demultiplex a fasta::Record of paired-end file
+///
+///
+///
 pub fn pe_fa_demux(
     forward_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     reverse_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
@@ -411,7 +461,12 @@ pub fn pe_fa_demux(
     Ok(())
 }
 
-// pe_fq_demux function --------------------------------------------------------
+// pe_fq_demux function -----------------------------------------------------
+
+/// Demultiplex a fasta::Record of paired-end file
+///
+///
+///
 pub fn pe_fq_demux(
     forward_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     reverse_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
@@ -426,6 +481,8 @@ pub fn pe_fq_demux(
         ext = "";
     }
 
+    let mut nb_records: HashMap<&str, i32> = HashMap::new();
+
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut actual_fp_r1 = "";
         for (key, value) in barcode_data {
@@ -434,6 +491,7 @@ pub fn pe_fq_demux(
             }
             actual_fp_r1 = value[0];
         }
+
         if !actual_fp_r1.is_empty() {
             write_to_fq(
                 format!("{}.{}", actual_fp_r1, ext).as_str(),
@@ -451,6 +509,11 @@ pub fn pe_fq_demux(
             )
             .expect("Cannot write to unknown file");
         }
+        if nb_records.contains_key(&actual_fp_r1) {
+            nb_records.insert(actual_fp_r1, nb_records[&actual_fp_r1] + 1);
+        } else {
+            nb_records.insert(actual_fp_r1, 1);
+        }
     }
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut actual_fp_r2 = "";
@@ -460,6 +523,7 @@ pub fn pe_fq_demux(
             }
             actual_fp_r2 = value[1];
         }
+
         if !actual_fp_r2.is_empty() {
             write_to_fq(
                 format!("{}.{}", actual_fp_r2, ext).as_str(),
@@ -477,6 +541,16 @@ pub fn pe_fq_demux(
             )
             .expect("Cannot write to unknown file");
         }
+
+        if nb_records.contains_key(&actual_fp_r2) {
+            nb_records.insert(actual_fp_r2, nb_records[&actual_fp_r2] + 1);
+        } else {
+            nb_records.insert(actual_fp_r2, 1);
+        }
+    }
+
+    for (key, value) in nb_records.iter() {
+        println!("[INFO] {} {}", key, value);
     }
 
     Ok(())
@@ -486,6 +560,42 @@ pub fn pe_fq_demux(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_msg_ok() {
+        let text = "message";
+        let quiet = false;
+        msg(text, quiet);
+    }
+
+    #[test]
+    fn test_msg_quiet() {
+        let text = "message";
+        let quiet = true;
+        msg(text, quiet);
+    }
+
+    #[test]
+    fn test_err(){
+        let error = "error";
+        err(error);
+    }
+
+    #[test]
+    fn test_bc_cmp_ok() {
+        let seq = "ATCGATCGATCG";
+        let bc = "ATCG";
+
+        assert!(bc_cmp(bc, seq));
+    }
+
+    #[test]
+    fn test_bc_cmp_not_ok() {
+        let bc = "TGCA";
+        let seq = "ATCGATCGATCG";
+
+        assert_eq!(bc_cmp(bc, seq), false);
+    }
 
     #[test]
     fn test_se_fa_demux() {
