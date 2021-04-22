@@ -154,7 +154,7 @@ pub fn read_file_to_string(filename: &str) -> io::Result<String> {
 pub fn split_line_by_tab(string: &str) -> Vec<Vec<&str>> {
     string
         .lines()
-        .map(|line| line.split("\t").collect())
+        .map(|line| line.split('\t').collect())
         .collect()
 }
 
