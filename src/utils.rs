@@ -220,7 +220,7 @@ pub fn write_to_fa<'a>(filename: &'a str, out: &'a str, record: &'a fasta::Recor
     let file = OpenOptions::new()
                 .append(true)
                 .create(true)
-                .open(file_path.to_str().unwrap())?;
+                .open(file_path)?;
     let handle = io::BufWriter::new(file);
     let mut writer = fasta::Writer::new(handle);
     let _write_res = writer.write_record(&record)
@@ -249,7 +249,7 @@ pub fn write_to_fq<'a>(filename: &'a str, out: &'a str, record: &'a fastq::Recor
     let file = OpenOptions::new()
                 .append(true)
                 .create(true)
-                .open(filename)?;
+                .open(file_path)?;
     let handle = io::BufWriter::new(file);
     let mut writer = fastq::Writer::new(handle);
     let _write_res = writer.write_record(&record)
