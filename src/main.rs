@@ -135,46 +135,52 @@ fn main() {
     // Get files reader
     let (forward_reader, _forward_compression) = utils::read_file(&Path::new(forward)).expect("Cannot read input file");
 
-    // First two options are single-end mode and last two paired-end mode
-    if forward_file_ext == utils::FileType::Fasta && reverse == "" {
-
-        let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
-        utils::se_fa_demux(&mut fa_forward_records,
+    match forward_file_ext {
+        utils::FileType::Fasta =>
+            match reverse.is_empty() {
+                // single-end fasta mode
+                true => {
+                    let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                    utils::se_fa_demux(&mut fa_forward_records,
                            &barcode_info,
                            output)
                           .expect("Cannot demutiplex file");
+                },
+                // paired-end fasta mode
+                false => {
+                    let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                    let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                    let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
+                    utils::pe_fa_demux(&mut fa_forward_records,
+                                       &mut fa_reverse_records,
+                                       &barcode_info,
+                                       output)
+                                      .expect("Cannot demultiplex file");
+                }
+            },
+        utils::FileType::Fastq =>
+            match reverse.is_empty() {
+                // single-end fastq mode
+                true => {
+                    let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                    utils::se_fq_demux(&mut fq_forward_records,
+                                       &barcode_info,
+                                       output)
+                                      .expect("Cannot demultiplex file");
+                },
+                // paired-end fastq mode
+                false => {
+                    let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                    let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                    let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
 
-    } else if forward_file_ext == utils::FileType::Fastq && reverse == "" {
-
-        let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
-        utils::se_fq_demux(&mut fq_forward_records,
-                           &barcode_info,
-                           output)
-                          .expect("Cannot demultiplex file");
-
-    } else if forward_file_ext == utils::FileType::Fasta && reverse_file_ext == utils::FileType::Fasta {
-        
-        let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
-        let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-        let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
-
-        utils::pe_fa_demux(&mut fa_forward_records,
-                           &mut fa_reverse_records,
-                           &barcode_info,
-                           output)
-                          .expect("Cannot demultiplex file");
-
-    } else if forward_file_ext == utils::FileType::Fastq && reverse_file_ext == utils::FileType::Fastq {
-        
-        let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
-        let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-        let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
-
-        utils::pe_fq_demux(&mut fq_forward_records,
-                           &mut fq_reverse_records, 
-                           &barcode_info, 
-                           output)
-                          .expect("Cannot demultiplex file");
+                    utils::pe_fq_demux(&mut fq_forward_records,
+                                       &mut fq_reverse_records, 
+                                       &barcode_info, 
+                                       output)
+                                      .expect("Cannot demultiplex file");
+                }
+            },
     }
 
     info!("{}", format_args!("{} {}", "Done! Results are available in ", output));
