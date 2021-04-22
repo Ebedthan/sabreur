@@ -11,7 +11,6 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
 
-extern crate chrono;
 extern crate fern;
 extern crate log;
 extern crate niffler;

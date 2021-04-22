@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process;
+use std::time::Instant;
 
 use bio::io;
 use clap::{App, Arg};
@@ -56,6 +57,7 @@ fn main() {
         .get_matches();
 
     // START ----------------------------------------------------------------
+    let startime = Instant::now();
 
     // Read args
     let forward = matches.value_of("FORWARD").unwrap();
@@ -73,12 +75,19 @@ fn main() {
     let quiet = matches.is_present("quiet");
     utils::setup_logging(quiet).expect("Failed to initialize logging.");
 
+    info!("{}", format!("sabreur v0.1.0 starting up!"));
+    if reverse.is_empty() {
+        info!("{}", format!("You are in single-end mode"));
+    } else {
+        info!("{}", format!("You are in paired-end mode"));
+    }
+
     // Handle output dir
     if Path::new(output).exists() && !force {
-        error!("Specified output folder already exists! Please change it using --out option or use --force to overwrite it.");
+        error!("{}", format!("Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output));
         process::exit(1);
     } else if Path::new(output).exists() && force {
-        info!("Reusing directory");
+        info!("{}", format!("Reusing directory {}", output));
         fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
     } else if !Path::new(output).exists() {
@@ -167,6 +176,8 @@ fn main() {
             },
     }
 
+    let duration = startime.elapsed();
     info!("{}", format_args!("{} {}", "Done! Results are available in", output));
+    info!("{}", format!("Walltime: {:?}", duration));
 
 }
