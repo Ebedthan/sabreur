@@ -50,27 +50,26 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .chain(fern::log_file("maph.log")?);
+        .chain(fern::log_file("sabreur.log")?);
     
         let stdout_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            // special format for debug messages coming from maph.
-            if record.level() > log::LevelFilter::Info && record.target() == "maph" {
-                out.finish(format_args!(
-                    "---\nDEBUG: {}: {}\n---",
-                    chrono::Local::now().format("%H:%M:%S"),
-                    message
-                ))
-            } else {
-                out.finish(format_args!(
-                    "[{}][{}] {}",
-                    chrono::Local::now().format("%H:%M:%S"),
-                    record.level(),
-                    message
-                ))
-            }
-        })
-        .chain(io::stdout());
+            .format(|out, message, record| {
+                // special format for debug messages coming from sabreur.
+                if record.level() > log::LevelFilter::Info && record.target() == "maph" {
+                    out.finish(format_args!(
+                        "---\nDEBUG: {}: {}\n---",
+                        chrono::Local::now().format("%H:%M:%S"),
+                        message
+                    ))
+                } else {
+                    out.finish(format_args!(
+                        "[{}] {}",
+                        record.level(),
+                        message
+                    ))
+                }
+            })
+            .chain(io::stdout());
 
     base_config
         .chain(file_config)
