@@ -534,10 +534,7 @@ mod tests {
             .expect("Error during file reading");
 
         assert_eq!(compression, niffler::compression::Format::Gzip);
-        assert_eq!(
-            contents,
-            ">seqID1 desc\nATCGATCGATCGATC\n"
-        );
+        assert_eq!(contents, ">seqID1 desc\nATCGATCGATCGATC\n");
     }
 
     #[test]
@@ -549,10 +546,7 @@ mod tests {
             let record = record.unwrap();
             assert_eq!(record.id(), "seqID1");
             assert_eq!(record.desc(), Some("desc"));
-            assert_eq!(
-                record.seq().to_vec(),
-                b"ATCGATCGATCGATC"
-            );
+            assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATC");
         }
     }
 

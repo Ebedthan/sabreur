@@ -15,7 +15,6 @@ keywords = ["bioinformatics", "demultiplexing", "triming"]
 anyhow        = "1.0.40"
 bio           = "*"
 clap          = "~2.33"
-chrono        = "0.4"
 fern          = "0.5"
 log           = "0.4"
 niffler       = "2.3"

@@ -2,7 +2,7 @@
 ![CI](https://github.com/Ebedthan/sabreur/workflows/CI/badge.svg)
 [![CodeCov](https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/sabreur)
 
-# sabreur &#129399;🧬: A barcode demultiplexing tool for fasta and fastq files
+# <img src="./img/ninja.png" width=50em alt="sabreur" /> 🧬 sabreur, a barcode demultiplexing tool for fasta and fastq files.
 
 With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
 
