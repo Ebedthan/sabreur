@@ -22,35 +22,28 @@ use regex::Regex;
 // setup_logging ------------------------------------------------------------
 
 /// Set up the program logging using fern crate.
-/// 
+///
 /// # Example
 /// ```rust
 /// let quiet: bool = true;
 /// setup_logging(quiet).expect("Cannot initialize program logging")
 /// ```
 ///
-pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {  
+pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match quiet {
-        true => base_config.level(log::LevelFilter::Info)
-                        .level_for("overly-verbose-target", log::LevelFilter::Warn),
+        true => base_config
+            .level(log::LevelFilter::Info)
+            .level_for("overly-verbose-target", log::LevelFilter::Warn),
         _ => base_config.level(log::LevelFilter::Trace),
     };
-    
+
     let stdout_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{}] {}",
-                record.level(),
-                message
-            ))
-        })
+        .format(|out, message, record| out.finish(format_args!("[{}] {}", record.level(), message)))
         .chain(io::stdout());
 
-    base_config
-        .chain(stdout_config)
-        .apply()?;
+    base_config.chain(stdout_config).apply()?;
 
     Ok(())
 }
@@ -58,51 +51,47 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
 // read_file function -------------------------------------------------------
 
 /// Get reader and compression format of file
-/// 
+///
 /// # Example
 /// ```rust
 /// # use std::path::Path;
-/// 
+///
 /// let path = Path::new("path/to/file");
 /// let (reader, compression) = read_file(&path);
 /// ```
-/// 
-pub fn read_file(path: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::Format), > {
-    let raw_in = Box::new(io::BufReader::new(
-        File::open(path)?
-    ));
+///
+pub fn read_file(path: &Path) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+    let raw_in = Box::new(io::BufReader::new(File::open(path)?));
 
-    let (reader, compression) = niffler::get_reader(raw_in)
-        .expect("Cannot read input fasta file");
+    let (reader, compression) = niffler::get_reader(raw_in).expect("Cannot read input fasta file");
 
     match compression {
         niffler::compression::Format::Gzip => Ok((reader, compression)),
-        _ => { 
+        _ => {
             eprintln!("Provided file is not gzipped.");
             process::exit(1)
-        },
+        }
     }
-
 }
 
 // is_fastx function --------------------------------------------------------
 
 /// Validate file type from file extension
-/// 
+///
 /// # Example
 /// ```rust
 /// let filename = "myfile.fa.gz".to_string();
 /// assert!(is_fastx(filename).is_ok())
 /// ```
-/// 
+///
 pub fn is_fastx(filename: String) -> Result<(), String> {
     let ext = vec!["fa", "fas", "fasta", "fastq", "fq", "gz"];
-    
+
     let path = Path::new(&filename);
     let f_ext = path.extension().unwrap();
     let f_last = f_ext.to_str().unwrap();
 
-    if ext.contains(&f_last){
+    if ext.contains(&f_last) {
         return Ok(());
     } else {
         return Err("Input file is not fasta nor fastq formatted".to_string());
@@ -119,13 +108,13 @@ pub enum FileType {
 }
 
 /// Get file type from filename
-/// 
+///
 /// # Example
 /// ```rust
 /// let filename = "myfile.fq";
 /// let file_type = get_file_type(filename);
 /// ```
-/// 
+///
 pub fn get_file_type(filename: &str) -> Option<FileType> {
     if filename.contains(".fastq") || filename.contains(".fq") {
         Some(FileType::Fastq)
@@ -136,17 +125,16 @@ pub fn get_file_type(filename: &str) -> Option<FileType> {
     }
 }
 
-
 // read_file_to_string function ---------------------------------------------
 
 /// Read a file into a string
-/// 
+///
 /// # Example
 /// ```rust
 /// let filename = "myfile.txt";
 /// let file_as_string = read_file_to_string(filename);
 /// ```
-/// 
+///
 pub fn read_file_to_string(filename: &str) -> io::Result<String> {
     let mut file = File::open(filename)?;
     let mut s = String::new();
@@ -157,80 +145,99 @@ pub fn read_file_to_string(filename: &str) -> io::Result<String> {
 // split_line_by_tab function ------------------------------------------------------
 
 /// Split a &str at each \t
-/// 
+///
 /// # Example
 /// ```rust
 /// let mystring = "hello\tworld";
 /// let string_fields = split_line_by_tab(mystring);
 /// ```
-/// 
+///
 pub fn split_line_by_tab<'a>(string: &'a str) -> Vec<Vec<&'a str>> {
     let tab_re = Regex::new(r"\t").unwrap();
-    string.lines().map(|line| {
-        tab_re.split(line).collect()
-    }).collect()
+    string
+        .lines()
+        .map(|line| tab_re.split(line).collect())
+        .collect()
 }
-
 
 // Barcode type -------------------------------------------------------------
 pub type Barcode<'a> = HashMap<&'a str, Vec<&'a str>>;
 
-
 // write_to_fa function -----------------------------------------------------
 
 /// Write to provided data to a fasta file in append mode
-/// 
+///
 /// # Example
 /// ```rust
-/// 
+///
 /// # use bio::io::fasta;
 /// let filename = "myfile.fa";
 /// let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
 /// write_to_fa(filename, &record);
 /// ```
-/// 
-pub fn write_to_fa<'a>(filename: &'a str, compression: niffler::compression::Format, out: &'a str, record: &'a fasta::Record) -> Result<()>{
+///
+pub fn write_to_fa<'a>(
+    filename: &'a str,
+    compression: niffler::compression::Format,
+    out: &'a str,
+    record: &'a fasta::Record,
+) -> Result<()> {
     let mut file_path = PathBuf::from("");
     file_path.push(out);
     file_path.push(filename);
 
     let file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(file_path)?;
-    let handle = niffler::get_writer(Box::new(file), compression, niffler::compression::Level::One)?;
+        .append(true)
+        .create(true)
+        .open(file_path)?;
+    let handle = niffler::get_writer(
+        Box::new(file),
+        compression,
+        niffler::compression::Level::One,
+    )?;
     let mut writer = fasta::Writer::new(handle);
-    let _write_res = writer.write_record(&record)
-                        .expect("Cannot write to fasta file");
+    let _write_res = writer
+        .write_record(&record)
+        .expect("Cannot write to fasta file");
 
     Ok(())
 }
 
 /// Write to provided data to a fastq file in append mode
-/// 
+///
 /// # Example
 /// ```rust
-/// 
+///
 /// # use bio::io::fastq;
 /// let filename = "myfile.fq";
 /// let record = fastq::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
 /// write_to_fq(filename, &record);
 /// ```
-/// 
-/// 
-pub fn write_to_fq<'a>(filename: &'a str, compression: niffler::compression::Format, out: &'a str, record: &'a fastq::Record) -> Result<()>{
+///
+///
+pub fn write_to_fq<'a>(
+    filename: &'a str,
+    compression: niffler::compression::Format,
+    out: &'a str,
+    record: &'a fastq::Record,
+) -> Result<()> {
     let mut file_path = PathBuf::from("");
     file_path.push(out);
     file_path.push(filename);
 
     let file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(file_path)?;
-    let handle = niffler::get_writer(Box::new(file), compression, niffler::compression::Level::One)?;
+        .append(true)
+        .create(true)
+        .open(file_path)?;
+    let handle = niffler::get_writer(
+        Box::new(file),
+        compression,
+        niffler::compression::Level::One,
+    )?;
     let mut writer = fastq::Writer::new(handle);
-    let _write_res = writer.write_record(&record)
-                        .expect("Cannot write to fasta file");
+    let _write_res = writer
+        .write_record(&record)
+        .expect("Cannot write to fasta file");
 
     Ok(())
 }
@@ -245,7 +252,6 @@ pub fn bc_cmp(bc: &str, seq: &str) -> bool {
     }
 
     res
-    
 }
 
 // se_fa_demux function --------------------------------------------------------
@@ -253,32 +259,43 @@ pub fn se_fa_demux(
     records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
-    out: &str) -> Result<()> {
-        
-        let mut ext = "";
-        if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-            ext = "gz";
+    out: &str,
+) -> Result<()> {
+    let mut ext = "";
+    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
+        ext = "gz";
+    } else {
+        ext = "";
+    }
+
+    while let Some(Ok(record)) = records.next() {
+        let mut actual_fp_r1 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
+                break;
+            }
+            actual_fp_r1 = value[0];
+        }
+        if !actual_fp_r1.is_empty() {
+            write_to_fa(
+                format!("{}.{}", actual_fp_r1, ext).as_str(),
+                compression,
+                out,
+                &record,
+            )
+            .expect("Cannot write to output file");
         } else {
-            ext = "";
+            write_to_fa(
+                format!("{}.{}", "unknown.fa", ext).as_str(),
+                compression,
+                out,
+                &record,
+            )
+            .expect("Cannot write to unknown file");
         }
+    }
 
-        while let Some(Ok(record)) = records.next() {
-            let mut actual_fp_r1 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
-                    break;
-                }
-                actual_fp_r1 = value[0];
-
-            }
-            if !actual_fp_r1.is_empty() {
-                write_to_fa(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &record).expect("Cannot write to output file");
-            } else {
-                write_to_fa(format!("{}.{}", "unknown.fa", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
-            }
-        }
-
-        Ok(())
+    Ok(())
 }
 
 // se_fq_demux function --------------------------------------------------------
@@ -286,32 +303,43 @@ pub fn se_fq_demux(
     records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
-    out: &str) -> Result<()> {
-        
-        let mut ext = "";
-        if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-            ext = "gz";
+    out: &str,
+) -> Result<()> {
+    let mut ext = "";
+    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
+        ext = "gz";
+    } else {
+        ext = "";
+    }
+
+    while let Some(Ok(record)) = records.next() {
+        let mut actual_fp_r1 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
+                break;
+            }
+            actual_fp_r1 = value[0];
+        }
+        if !actual_fp_r1.is_empty() {
+            write_to_fq(
+                format!("{}.{}", actual_fp_r1, ext).as_str(),
+                compression,
+                out,
+                &record,
+            )
+            .expect("Cannot write to output file");
         } else {
-            ext = "";
+            write_to_fq(
+                format!("{}.{}", "unknown.fq", ext).as_str(),
+                compression,
+                out,
+                &record,
+            )
+            .expect("Cannot write to unknown file");
         }
+    }
 
-        while let Some(Ok(record)) = records.next() {
-            let mut actual_fp_r1 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
-                    break;
-                }
-                actual_fp_r1 = value[0];
-
-            }
-            if !actual_fp_r1.is_empty() {
-                write_to_fq(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &record).expect("Cannot write to output file");
-            } else {
-                write_to_fq(format!("{}.{}", "unknown.fq", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
-            }
-        }
-
-        Ok(())
+    Ok(())
 }
 
 // pe_fa_demux function --------------------------------------------------------
@@ -320,47 +348,69 @@ pub fn pe_fa_demux(
     reverse_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
-    out: &str) -> Result<()> {
-        
-        let mut ext = "";
-        if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-            ext = "gz";
+    out: &str,
+) -> Result<()> {
+    let mut ext = "";
+    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
+        ext = "gz";
+    } else {
+        ext = "";
+    }
+
+    while let Some(Ok(f_rec)) = forward_records.next() {
+        let mut actual_fp_r1 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
+                break;
+            }
+            actual_fp_r1 = value[0];
+        }
+        if !actual_fp_r1.is_empty() {
+            write_to_fa(
+                format!("{}.{}", actual_fp_r1, ext).as_str(),
+                compression,
+                out,
+                &f_rec,
+            )
+            .expect("Cannot write to output file");
         } else {
-            ext = "";
+            write_to_fa(
+                format!("{}.{}", "unknown_R1.fa", ext).as_str(),
+                compression,
+                out,
+                &f_rec,
+            )
+            .expect("Cannot write to unknown file");
         }
-
-        while let Some(Ok(f_rec)) = forward_records.next() {
-            let mut actual_fp_r1 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
-                    break;
-                }
-                actual_fp_r1 = value[0];
-
+    }
+    while let Some(Ok(r_rec)) = reverse_records.next() {
+        let mut actual_fp_r2 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
+                break;
             }
-            if !actual_fp_r1.is_empty() {
-                write_to_fa(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &f_rec).expect("Cannot write to output file");
-            } else {
-                write_to_fa(format!("{}.{}", "unknown_R1.fa", ext).as_str(), compression, out, &f_rec).expect("Cannot write to unknown file");
-            }
+            actual_fp_r2 = value[1];
         }
-        while let Some(Ok(r_rec)) = reverse_records.next() {
-            let mut actual_fp_r2 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
-                    break;
-                }
-                actual_fp_r2 = value[1];
-
-            }
-            if !actual_fp_r2.is_empty() {
-                write_to_fa(format!("{}.{}", actual_fp_r2, ext).as_str(), compression, out, &r_rec).expect("Cannot write to output file");
-            } else {
-                write_to_fa(format!("{}.{}", "unknown_R2.fa", ext).as_str(), compression, out, &r_rec).expect("Cannot write to unknown file");
-            }
+        if !actual_fp_r2.is_empty() {
+            write_to_fa(
+                format!("{}.{}", actual_fp_r2, ext).as_str(),
+                compression,
+                out,
+                &r_rec,
+            )
+            .expect("Cannot write to output file");
+        } else {
+            write_to_fa(
+                format!("{}.{}", "unknown_R2.fa", ext).as_str(),
+                compression,
+                out,
+                &r_rec,
+            )
+            .expect("Cannot write to unknown file");
         }
+    }
 
-        Ok(())
+    Ok(())
 }
 
 // pe_fq_demux function --------------------------------------------------------
@@ -369,54 +419,75 @@ pub fn pe_fq_demux(
     reverse_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
-    out: &str) -> Result<()> {
-        
-        let mut ext = "";
-        if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-            ext = "gz";
+    out: &str,
+) -> Result<()> {
+    let mut ext = "";
+    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
+        ext = "gz";
+    } else {
+        ext = "";
+    }
+
+    while let Some(Ok(f_rec)) = forward_records.next() {
+        let mut actual_fp_r1 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
+                break;
+            }
+            actual_fp_r1 = value[0];
+        }
+        if !actual_fp_r1.is_empty() {
+            write_to_fq(
+                format!("{}.{}", actual_fp_r1, ext).as_str(),
+                compression,
+                out,
+                &f_rec,
+            )
+            .expect("Cannot write to output file");
         } else {
-            ext = "";
+            write_to_fq(
+                format!("{}.{}", "unknown_R1.fq", ext).as_str(),
+                compression,
+                out,
+                &f_rec,
+            )
+            .expect("Cannot write to unknown file");
         }
-
-        while let Some(Ok(f_rec)) = forward_records.next() {
-            let mut actual_fp_r1 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
-                    break;
-                }
-                actual_fp_r1 = value[0];
-
+    }
+    while let Some(Ok(r_rec)) = reverse_records.next() {
+        let mut actual_fp_r2 = "";
+        for (key, value) in barcode_data {
+            if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
+                break;
             }
-            if !actual_fp_r1.is_empty() {
-                write_to_fq(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &f_rec).expect("Cannot write to output file");
-            } else {
-                write_to_fq(format!("{}.{}", "unknown_R1.fq", ext).as_str(), compression, out, &f_rec).expect("Cannot write to unknown file");
-            }
+            actual_fp_r2 = value[1];
         }
-        while let Some(Ok(r_rec)) = reverse_records.next() {
-            let mut actual_fp_r2 = "";
-            for (key, value) in barcode_data {
-                if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
-                    break;
-                }
-                actual_fp_r2 = value[1];
-
-            }
-            if !actual_fp_r2.is_empty() {
-                write_to_fq(format!("{}.{}", actual_fp_r2, ext).as_str(), compression, out, &r_rec).expect("Cannot write to output file");
-            } else {
-                write_to_fq(format!("{}.{}", "unknown_R2.fq", ext).as_str(), compression, out, &r_rec).expect("Cannot write to unknown file");
-            }
+        if !actual_fp_r2.is_empty() {
+            write_to_fq(
+                format!("{}.{}", actual_fp_r2, ext).as_str(),
+                compression,
+                out,
+                &r_rec,
+            )
+            .expect("Cannot write to output file");
+        } else {
+            write_to_fq(
+                format!("{}.{}", "unknown_R2.fq", ext).as_str(),
+                compression,
+                out,
+                &r_rec,
+            )
+            .expect("Cannot write to unknown file");
         }
+    }
 
-        Ok(())
+    Ok(())
 }
 
 // Tests --------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_se_fa_demux() {
@@ -443,26 +514,30 @@ mod tests {
         assert!((write_to_fa("mytmp.fa", cmp, out, &record)).is_ok());
 
         let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
-                                .expect("Cannot read file.")
-                                .records();
+            .expect("Cannot read file.")
+            .records();
 
         while let Some(Ok(rec)) = fa_records.next() {
             assert_eq!(rec.id(), "id_str");
             assert_eq!(rec.desc(), Some("desc"));
             assert_eq!(rec.seq().to_vec(), b"ATCGCCG");
         }
-        std::fs::remove_file("tests/mytmp.fa")
-                    .expect("Cannot remove tmp file");
+        std::fs::remove_file("tests/mytmp.fa").expect("Cannot remove tmp file");
     }
 
     #[test]
     fn test_read_file() {
         let (mut reader, compression) = read_file(Path::new("tests/test.fa.gz")).unwrap();
         let mut contents = String::new();
-        reader.read_to_string(&mut contents).expect("Error during file reading");
+        reader
+            .read_to_string(&mut contents)
+            .expect("Error during file reading");
 
         assert_eq!(compression, niffler::compression::Format::Gzip);
-        assert_eq!(contents, ">seqID1 desc\nATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\n");
+        assert_eq!(
+            contents,
+            ">seqID1 desc\nATCGATCGATCGATC\n"
+        );
     }
 
     #[test]
@@ -474,9 +549,11 @@ mod tests {
             let record = record.unwrap();
             assert_eq!(record.id(), "seqID1");
             assert_eq!(record.desc(), Some("desc"));
-            assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG");
+            assert_eq!(
+                record.seq().to_vec(),
+                b"ATCGATCGATCGATC"
+            );
         }
-        
     }
 
     #[test]
@@ -492,11 +569,10 @@ mod tests {
         assert!(is_fastx(f3.to_string()).is_ok());
         assert!(is_fastx(f4.to_string()).is_err());
         assert!(is_fastx(f5.to_string()).is_err());
-
     }
 
     #[test]
-    fn test_get_file_type(){
+    fn test_get_file_type() {
         let f1 = "myfile.fa";
         let f2 = "myfile.fq";
         let f3 = "myfile.fa.gz";
@@ -511,27 +587,28 @@ mod tests {
     }
 
     #[test]
-    fn test_read_file_to_string(){
+    fn test_read_file_to_string() {
         let mut file = OpenOptions::new()
-                            .create(true)
-                            .write(true)
-                            .open("tests/mytmp.txt")
-                            .unwrap();
+            .create(true)
+            .write(true)
+            .open("tests/mytmp.txt")
+            .unwrap();
         if let Err(e) = writeln!(file, "Hello\tWorld\tEarth\nBrian\twas\tthere\n") {
             eprintln!("Could not write to file: {}", e);
         }
         assert_eq!(
             read_file_to_string("tests/mytmp.txt").unwrap().trim(),
-            "Hello\tWorld\tEarth\nBrian\twas\tthere");
+            "Hello\tWorld\tEarth\nBrian\twas\tthere"
+        );
         std::fs::remove_file("tests/mytmp.txt").expect("Cannot delete file");
     }
 
     #[test]
-    fn test_split_line_by_tab(){
+    fn test_split_line_by_tab() {
         let mystring = "Hello\tMars\tLinux\nBrian\tfork";
         let fields = split_line_by_tab(mystring);
-        let myvec = vec![vec!["Hello","Mars","Linux"], vec!["Brian", "fork"]];
+        let myvec = vec![vec!["Hello", "Mars", "Linux"], vec!["Brian", "fork"]];
+
         assert_eq!(fields, myvec);
-        
     }
 }

@@ -15,45 +15,56 @@ use std::time::Instant;
 
 use bio::io;
 use clap::{App, Arg};
-use log::{info, error};
+use log::{error, info};
 
 mod utils;
 
 fn main() {
-    
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
         .version("v0.1.0")
         .author("Anicet Ebou, anicet.ebou@gmail.com")
         .about("A barcode demultiplexing tool")
-        .arg(Arg::with_name("BARCODE")
-            .help("Input barcode file [required]")
-            .required(true)
-            .index(1))
-        .arg(Arg::with_name("FORWARD")
-            .help("Input forward fasta or fastq file. Can be gzipped [required]")
-            .validator(utils::is_fastx)
-            .required(true)
-            .index(2))
-        .arg(Arg::with_name("REVERSE")
-            .help("Input reverse fasta or fastq file. Can be gzipped")
-            .validator(utils::is_fastx)
-            .index(3))
-        .arg(Arg::with_name("output")
-            .help("Output folder")
-            .short("o")
-            .long("out")
-            .value_name("FOLDER")
-            .default_value("sabreur_out"))
-        .arg(Arg::with_name("force")
-            .help("Force reuse of output directory")
-            .long("force")
-            .takes_value(false))
-        .arg(Arg::with_name("quiet")
-            .help("Decrease program verbosity")
-            .short("q")
-            .long("quiet")
-            .takes_value(false))
+        .arg(
+            Arg::with_name("BARCODE")
+                .help("Input barcode file [required]")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("FORWARD")
+                .help("Input forward fasta or fastq file. Can be gzipped [required]")
+                .validator(utils::is_fastx)
+                .required(true)
+                .index(2),
+        )
+        .arg(
+            Arg::with_name("REVERSE")
+                .help("Input reverse fasta or fastq file. Can be gzipped")
+                .validator(utils::is_fastx)
+                .index(3),
+        )
+        .arg(
+            Arg::with_name("output")
+                .help("Output folder")
+                .short("o")
+                .long("out")
+                .value_name("FOLDER")
+                .default_value("sabreur_out"),
+        )
+        .arg(
+            Arg::with_name("force")
+                .help("Force reuse of output directory")
+                .long("force")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("quiet")
+                .help("Decrease program verbosity")
+                .short("q")
+                .long("quiet")
+                .takes_value(false),
+        )
         .get_matches();
 
     // START ----------------------------------------------------------------
@@ -109,75 +120,86 @@ fn main() {
     let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
     // Get forward file reader
-    let (forward_reader, forward_compression) = utils::read_file(&Path::new(forward)).expect("Cannot read input file");
+    let (forward_reader, forward_compression) =
+        utils::read_file(&Path::new(forward)).expect("Cannot read input file");
 
     // Main
     match forward_file_ext {
-        utils::FileType::Fasta =>
-            match reverse.is_empty() {
-                // single-end fasta mode
-                true => {
-                    for b_vec in barcode_fields.iter(){
-                        barcode_info.insert(b_vec[0],vec![b_vec[1]]);
-                    }
-                    let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
-                    utils::se_fa_demux(&mut fa_forward_records,
-                                       forward_compression,
-                                       &barcode_info,
-                                       output)
-                                      .expect("Cannot demutiplex file");
-                },
-                // paired-end fasta mode
-                false => {
-                    for b_vec in barcode_fields.iter(){
-                        barcode_info.insert(b_vec[0],vec![b_vec[1], b_vec[2]]);
-                    }
-                    let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
-                    let (reverse_reader, reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-                    let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
-                    utils::pe_fa_demux(&mut fa_forward_records,
-                                       &mut fa_reverse_records,
-                                       reverse_compression,
-                                       &barcode_info,
-                                       output)
-                                      .expect("Cannot demultiplex file");
+        utils::FileType::Fasta => match reverse.is_empty() {
+            // single-end fasta mode
+            true => {
+                for b_vec in barcode_fields.iter() {
+                    barcode_info.insert(b_vec[0], vec![b_vec[1]]);
                 }
-            },
-        utils::FileType::Fastq =>
-            match reverse.is_empty() {
-                // single-end fastq mode
-                true => {
-                    for b_vec in barcode_fields.iter(){
-                        barcode_info.insert(b_vec[0],vec![b_vec[1]]);
-                    }
-                    let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
-                    utils::se_fq_demux(&mut fq_forward_records,
-                                       forward_compression,
-                                       &barcode_info,
-                                       output)
-                                      .expect("Cannot demultiplex file");
-                },
-                // paired-end fastq mode
-                false => {
-                    for b_vec in barcode_fields.iter(){
-                        barcode_info.insert(b_vec[0],vec![b_vec[1], b_vec[2]]);
-                    }
-                    let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
-                    let (reverse_reader, reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-                    let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
+                let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                utils::se_fa_demux(
+                    &mut fa_forward_records,
+                    forward_compression,
+                    &barcode_info,
+                    output,
+                )
+                .expect("Cannot demutiplex file");
+            }
+            // paired-end fasta mode
+            false => {
+                for b_vec in barcode_fields.iter() {
+                    barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
+                }
+                let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                let (reverse_reader, reverse_compression) =
+                    utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
+                utils::pe_fa_demux(
+                    &mut fa_forward_records,
+                    &mut fa_reverse_records,
+                    reverse_compression,
+                    &barcode_info,
+                    output,
+                )
+                .expect("Cannot demultiplex file");
+            }
+        },
+        utils::FileType::Fastq => match reverse.is_empty() {
+            // single-end fastq mode
+            true => {
+                for b_vec in barcode_fields.iter() {
+                    barcode_info.insert(b_vec[0], vec![b_vec[1]]);
+                }
+                let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                utils::se_fq_demux(
+                    &mut fq_forward_records,
+                    forward_compression,
+                    &barcode_info,
+                    output,
+                )
+                .expect("Cannot demultiplex file");
+            }
+            // paired-end fastq mode
+            false => {
+                for b_vec in barcode_fields.iter() {
+                    barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
+                }
+                let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                let (reverse_reader, reverse_compression) =
+                    utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
 
-                    utils::pe_fq_demux(&mut fq_forward_records,
-                                       &mut fq_reverse_records, 
-                                       reverse_compression,
-                                       &barcode_info, 
-                                       output)
-                                      .expect("Cannot demultiplex file");
-                }
-            },
+                utils::pe_fq_demux(
+                    &mut fq_forward_records,
+                    &mut fq_reverse_records,
+                    reverse_compression,
+                    &barcode_info,
+                    output,
+                )
+                .expect("Cannot demultiplex file");
+            }
+        },
     }
 
     let duration = startime.elapsed();
-    info!("{}", format_args!("{} {}", "Done! Results are available in", output));
+    info!(
+        "{}",
+        format_args!("{} {}", "Done! Results are available in", output)
+    );
     info!("{}", format!("Walltime: {:?}", duration));
-
 }
