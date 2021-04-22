@@ -198,7 +198,8 @@ fn main() {
 
     let duration = startime.elapsed();
     utils::msg(
-        format!("{} {}", "Done! Results are available in", output).as_str(), quiet
+        format!("{} {}", "Results are available in", output).as_str(),
+        quiet,
     );
     utils::msg(format!("Walltime: {:?}", duration).as_str(), quiet);
     utils::msg("Thanks. Share. Come again!", quiet);

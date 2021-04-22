@@ -247,7 +247,7 @@ pub fn write_to_fq<'a>(
 /// let bc = "ATCT";
 /// let seq = "ATCTGGGCCAAATTT";
 /// bc_cmp(bc, seq);
-/// 
+///
 /// ```
 ///
 pub fn bc_cmp(bc: &str, seq: &str) -> bool {
@@ -275,7 +275,7 @@ pub fn bc_cmp(bc: &str, seq: &str) -> bool {
 /// let mut bc_data: Barcode = HashMap::new();
 /// bc_data.insert("ACCGTA", vec!["id1.fa"]);
 /// bc_data.insert("ATTGTT", vec!["id2.fa"]);
-/// 
+///
 /// assert!(se_fa_demux(&mut records, cmp, &bc_data, out).is_ok());
 /// ```
 ///
@@ -337,7 +337,7 @@ pub fn se_fa_demux(
 /// let mut bc_data: Barcode = HashMap::new();
 /// bc_data.insert("ACCGTA", vec!["id1.fa"]);
 /// bc_data.insert("ATTGTT", vec!["id2.fa"]);
-/// 
+///
 /// assert!(se_fq_demux(&mut records, cmp, &bc_data, out).is_ok());
 /// ```
 ///
@@ -484,7 +484,7 @@ pub fn pe_fq_demux(
     let mut nb_records: HashMap<&str, i32> = HashMap::new();
 
     while let Some(Ok(f_rec)) = forward_records.next() {
-        let mut actual_fp_r1 = "";
+        let mut actual_fp_r1 = "unknown_R1.fq";
         for (key, value) in barcode_data {
             if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
                 break;
@@ -516,7 +516,7 @@ pub fn pe_fq_demux(
         }
     }
     while let Some(Ok(r_rec)) = reverse_records.next() {
-        let mut actual_fp_r2 = "";
+        let mut actual_fp_r2 = "unknown_R2.fq";
         for (key, value) in barcode_data {
             if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
                 break;
@@ -550,7 +550,7 @@ pub fn pe_fq_demux(
     }
 
     for (key, value) in nb_records.iter() {
-        println!("[INFO] {} {}", key, value);
+        println!("[INFO] File {} contains {} records", key, value);
     }
 
     Ok(())
@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn test_err(){
+    fn test_err() {
         let error = "error";
         err(error);
     }
