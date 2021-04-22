@@ -17,7 +17,6 @@ extern crate niffler;
 
 use anyhow::Result;
 use bio::io::{fasta, fastq};
-use regex::Regex;
 
 // setup_logging ------------------------------------------------------------
 
@@ -68,7 +67,7 @@ pub fn read_file(path: &Path) -> Result<(Box<dyn io::Read>, niffler::compression
     match compression {
         niffler::compression::Format::Gzip => Ok((reader, compression)),
         _ => {
-            eprintln!("Provided file is not gzipped.");
+            eprintln!("Provided file is compressed but not gzipped");
             process::exit(1)
         }
     }
@@ -92,9 +91,9 @@ pub fn is_fastx(filename: String) -> Result<(), String> {
     let f_last = f_ext.to_str().unwrap();
 
     if ext.contains(&f_last) {
-        return Ok(());
+        Ok(())
     } else {
-        return Err("Input file is not fasta nor fastq formatted".to_string());
+        Err("Input file is not fasta nor fastq formatted".to_string())
     }
 }
 
@@ -152,11 +151,10 @@ pub fn read_file_to_string(filename: &str) -> io::Result<String> {
 /// let string_fields = split_line_by_tab(mystring);
 /// ```
 ///
-pub fn split_line_by_tab<'a>(string: &'a str) -> Vec<Vec<&'a str>> {
-    let tab_re = Regex::new(r"\t").unwrap();
+pub fn split_line_by_tab(string: &str) -> Vec<Vec<&str>> {
     string
         .lines()
-        .map(|line| tab_re.split(line).collect())
+        .map(|line| line.split("\t").collect())
         .collect()
 }
 

@@ -1087,7 +1087,6 @@ dependencies = [
  "log",
  "niffler",
  "num_cpus",
- "regex",
 ]
 
 [[package]]

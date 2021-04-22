@@ -86,11 +86,11 @@ fn main() {
     let quiet = matches.is_present("quiet");
     utils::setup_logging(quiet).expect("Failed to initialize logging.");
 
-    info!("{}", format!("sabreur v0.1.0 starting up!"));
+    info!("sabreur v0.1.0 starting up!");
     if reverse.is_empty() {
-        info!("{}", format!("You are in single-end mode"));
+        info!("You are in single-end mode");
     } else {
-        info!("{}", format!("You are in paired-end mode"));
+        info!("You are in paired-end mode");
     }
 
     // Handle output dir
@@ -109,7 +109,7 @@ fn main() {
     let forward_file_ext = utils::get_file_type(forward).unwrap();
     let reverse_file_ext = utils::get_file_type(reverse).unwrap();
 
-    if reverse != "" && forward_file_ext != reverse_file_ext {
+    if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
         error!("Mismatched type of file supplied: one is fasta while other is fastq");
         process::exit(1);
     }
@@ -122,6 +122,10 @@ fn main() {
     // Get forward file reader
     let (forward_reader, forward_compression) =
         utils::read_file(&Path::new(forward)).expect("Cannot read input file");
+
+    if forward_compression == niffler::compression::Format::Gzip {
+        info!("Provided files are gzipped");
+    }
 
     // Main
     match forward_file_ext {
@@ -202,4 +206,5 @@ fn main() {
         format_args!("{} {}", "Done! Results are available in", output)
     );
     info!("{}", format!("Walltime: {:?}", duration));
+    info!("Thanks. Share. Come again!");
 }

@@ -19,7 +19,6 @@ fern          = "0.5"
 log           = "0.4"
 niffler       = "2.3"
 num_cpus      = "1.13"
-regex         = "1.4"
 
 [dev-dependencies]
 criterion = "0.3"
