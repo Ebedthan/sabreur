@@ -274,7 +274,7 @@ pub fn se_fa_demux(
             if !actual_fp_r1.is_empty() {
                 write_to_fa(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &record).expect("Cannot write to output file");
             } else {
-                write_to_fa(format!("{}.{}", "unknown_R1.fq", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
+                write_to_fa(format!("{}.{}", "unknown.fa", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
             }
         }
 
@@ -307,7 +307,7 @@ pub fn se_fq_demux(
             if !actual_fp_r1.is_empty() {
                 write_to_fq(format!("{}.{}", actual_fp_r1, ext).as_str(), compression, out, &record).expect("Cannot write to output file");
             } else {
-                write_to_fq(format!("{}.{}", "unknown_R1.fq", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
+                write_to_fq(format!("{}.{}", "unknown.fq", ext).as_str(), compression, out, &record).expect("Cannot write to unknown file");
             }
         }
 
@@ -425,14 +425,14 @@ mod tests {
         let (fr, cmp) = read_file(&p).expect("Cannot open");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert("ACCGTA", vec!["tests/id1.fa"]);
-        bc_data.insert("ATTGTT", vec!["tests/id2.fa"]);
+        bc_data.insert("ACCGTA", vec!["id1.fa"]);
+        bc_data.insert("ATTGTT", vec!["id2.fa"]);
 
         assert!(se_fa_demux(&mut records, cmp, &bc_data, out).is_ok());
 
-        std::fs::remove_file("tests/id1.fa").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/id2.fa").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/unknown.fa").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/id1.fa.gz").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/id2.fa.gz").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/unknown.fa.gz").expect("Cannot delete tmp file");
     }
 
     #[test]
@@ -440,7 +440,7 @@ mod tests {
         let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
         let out = "tests";
         let cmp = niffler::compression::Format::Gzip;
-        assert!((write_to_fa("tests/mytmp.fa", cmp, out, &record)).is_ok());
+        assert!((write_to_fa("mytmp.fa", cmp, out, &record)).is_ok());
 
         let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
                                 .expect("Cannot read file.")
