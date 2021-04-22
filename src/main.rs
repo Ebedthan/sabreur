@@ -44,11 +44,6 @@ fn main() {
             .long("out")
             .value_name("FOLDER")
             .default_value("sabreur_out"))
-        .arg(Arg::with_name("cpus")
-            .help("Specify the number of threads")
-            .short("c")
-            .long("cpus")
-            .default_value("1"))
         .arg(Arg::with_name("force")
             .help("Force reuse of output directory")
             .long("force")
@@ -61,26 +56,9 @@ fn main() {
         .get_matches();
 
     // START ----------------------------------------------------------------
-    // Handle verbosity setting
-    let quiet = matches.is_present("quiet");
-    utils::setup_logging(quiet).expect("Failed to initialize logging.");
-
-    // Handle cpus 
-    let acpus = matches.value_of("cpus").unwrap();
-    let mut cpus = acpus.parse::<u8>().unwrap();
-    let n_cpus = num_cpus::get();
-
-    if cpus == 0 {
-        cpus = n_cpus as u8;
-    } else if cpus > n_cpus as u8 {
-        cpus = n_cpus as u8;
-    } else {
-        cpus = cpus;
-    }
 
     // Read args
     let forward = matches.value_of("FORWARD").unwrap();
-    println!("{}", cpus);
 
     let mut reverse = "";
     if matches.is_present("REVERSE") {
@@ -91,13 +69,17 @@ fn main() {
     let output = matches.value_of("output").unwrap();
     let force = matches.is_present("force");
 
+    // Handle verbosity setting
+    let quiet = matches.is_present("quiet");
+    utils::setup_logging(quiet).expect("Failed to initialize logging.");
+
     // Handle output dir
     if Path::new(output).exists() && !force {
         error!("Specified output folder already exists! Please change it using --out option or use --force to overwrite it.");
         process::exit(1);
     } else if Path::new(output).exists() && force {
         info!("Reusing directory");
-        fs::remove_dir(Path::new(output)).expect("Cannot remove existing directory");
+        fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
     } else if !Path::new(output).exists() {
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
@@ -117,42 +99,36 @@ fn main() {
     let barcode_data = utils::read_file_to_string(barcode).unwrap();
     let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
-    for b_vec in barcode_fields.iter() {
-        if b_vec.len() == 2 {
-            barcode_info.insert(
-                b_vec[0],
-                vec![b_vec[1]]
-            );
-        } else if b_vec.len() == 3 {
-            barcode_info.insert(
-                b_vec[0],
-                vec![b_vec[1], b_vec[2]]
-            );
-        }
+    // Get forward file reader
+    let (forward_reader, forward_compression) = utils::read_file(&Path::new(forward)).expect("Cannot read input file");
 
-    }
-
-    // Get files reader
-    let (forward_reader, _forward_compression) = utils::read_file(&Path::new(forward)).expect("Cannot read input file");
-
+    // Main
     match forward_file_ext {
         utils::FileType::Fasta =>
             match reverse.is_empty() {
                 // single-end fasta mode
                 true => {
+                    for b_vec in barcode_fields.iter(){
+                        barcode_info.insert(b_vec[0],vec![b_vec[1]]);
+                    }
                     let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
                     utils::se_fa_demux(&mut fa_forward_records,
-                           &barcode_info,
-                           output)
-                          .expect("Cannot demutiplex file");
+                                       forward_compression,
+                                       &barcode_info,
+                                       output)
+                                      .expect("Cannot demutiplex file");
                 },
                 // paired-end fasta mode
                 false => {
+                    for b_vec in barcode_fields.iter(){
+                        barcode_info.insert(b_vec[0],vec![b_vec[1], b_vec[2]]);
+                    }
                     let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
-                    let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                    let (reverse_reader, reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
                     let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
                     utils::pe_fa_demux(&mut fa_forward_records,
                                        &mut fa_reverse_records,
+                                       reverse_compression,
                                        &barcode_info,
                                        output)
                                       .expect("Cannot demultiplex file");
@@ -162,20 +138,28 @@ fn main() {
             match reverse.is_empty() {
                 // single-end fastq mode
                 true => {
+                    for b_vec in barcode_fields.iter(){
+                        barcode_info.insert(b_vec[0],vec![b_vec[1]]);
+                    }
                     let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
                     utils::se_fq_demux(&mut fq_forward_records,
+                                       forward_compression,
                                        &barcode_info,
                                        output)
                                       .expect("Cannot demultiplex file");
                 },
                 // paired-end fastq mode
                 false => {
+                    for b_vec in barcode_fields.iter(){
+                        barcode_info.insert(b_vec[0],vec![b_vec[1], b_vec[2]]);
+                    }
                     let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
-                    let (reverse_reader, _reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
+                    let (reverse_reader, reverse_compression) = utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
                     let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
 
                     utils::pe_fq_demux(&mut fq_forward_records,
                                        &mut fq_reverse_records, 
+                                       reverse_compression,
                                        &barcode_info, 
                                        output)
                                       .expect("Cannot demultiplex file");
@@ -183,6 +167,6 @@ fn main() {
             },
     }
 
-    info!("{}", format_args!("{} {}", "Done! Results are available in ", output));
+    info!("{}", format_args!("{} {}", "Done! Results are available in", output));
 
 }
