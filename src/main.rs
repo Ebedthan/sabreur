@@ -208,10 +208,14 @@ fn main() {
     }
 
     let duration = startime.elapsed();
+    let seconds = duration.as_secs() % 60;
+    let minutes = (duration.as_secs() / 60) % 60;
+    let hours = (duration.as_secs() / 60) / 60;
+
     utils::msg(
         format!("{} {}", "Results are available in", output).as_str(),
         quiet,
     );
-    utils::msg(format!("Walltime: {:?}", duration).as_str(), quiet);
+    utils::msg(format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(), quiet);
     utils::msg("Thanks. Share. Come again!", quiet);
 }
