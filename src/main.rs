@@ -213,6 +213,9 @@ fn main() {
         format!("{} {}", "Results are available in", output).as_str(),
         quiet,
     );
-    utils::msg(format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(), quiet);
+    utils::msg(
+        format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(),
+        quiet,
+    );
     utils::msg("Thanks. Share. Come again!", quiet);
 }

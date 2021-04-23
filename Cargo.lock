@@ -1061,7 +1061,6 @@ dependencies = [
  "clap",
  "criterion",
  "niffler",
- "num_cpus",
 ]
 
 [[package]]

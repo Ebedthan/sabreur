@@ -16,13 +16,12 @@ anyhow        = "1.0.40"
 bio           = "*"
 clap          = "~2.33"
 niffler       = "2.3"
-num_cpus      = "1.13"
 
 [dev-dependencies]
 criterion = "0.3"
 
 [profile.release]
-opt-level       = 2
+opt-level       = 3
 debug           = true
 overflow-checks = false
 lto             = 'thin'

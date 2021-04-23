@@ -284,12 +284,18 @@ pub fn se_fa_demux(
         ext = "";
     }
 
+    let mut nb_records: HashMap<&str, i32> = HashMap::new();
     while let Some(Ok(record)) = records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
             let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
             match res {
                 true => {
+                    if nb_records.get(value[0]) == None {
+                        nb_records.insert(value[0], 1);
+                    } else {
+                        nb_records.insert(value[0], nb_records[value[0]] + 1);
+                    }
                     unk = false;
                     write_to_fa(
                         format!("{}.{}", value[0], ext).as_str(),
@@ -308,6 +314,11 @@ pub fn se_fa_demux(
         }
 
         if unk {
+            if nb_records.get("unknown.fa") == None {
+                nb_records.insert("unknown.fa", 1);
+            } else {
+                nb_records.insert("unknown.fa", nb_records["unknown.fa"] + 1);
+            }
             write_to_fa(
                 format!("{}.{}", "unknown.fa", ext).as_str(),
                 compression,
@@ -318,6 +329,12 @@ pub fn se_fa_demux(
         }
     }
 
+    let mut sorted: Vec<_> = nb_records.iter().collect();
+    sorted.sort_by_key(|a| a.0);
+
+    for (key, value) in sorted.iter() {
+        println!("[INFO] {} contains {} records", key, value);
+    }
     Ok(())
 }
 
@@ -353,12 +370,18 @@ pub fn se_fq_demux(
         ext = "";
     }
 
+    let mut nb_records: HashMap<&str, i32> = HashMap::new();
     while let Some(Ok(record)) = records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
             let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
             match res {
                 true => {
+                    if nb_records.get(value[0]) == None {
+                        nb_records.insert(value[0], 1);
+                    } else {
+                        nb_records.insert(value[0], nb_records[value[0]] + 1);
+                    }
                     unk = false;
                     write_to_fq(
                         format!("{}.{}", value[0], ext).as_str(),
@@ -377,6 +400,11 @@ pub fn se_fq_demux(
         }
 
         if unk {
+            if nb_records.get("unknown.fq") == None {
+                nb_records.insert("unknown.fq", 1);
+            } else {
+                nb_records.insert("unknown.fq", nb_records["unknown.fq"] + 1);
+            }
             write_to_fq(
                 format!("{}.{}", "unknown.fq", ext).as_str(),
                 compression,
@@ -385,6 +413,12 @@ pub fn se_fq_demux(
             )
             .expect("Cannot write to unknown file");
         }
+    }
+    let mut sorted: Vec<_> = nb_records.iter().collect();
+    sorted.sort_by_key(|a| a.0);
+
+    for (key, value) in sorted.iter() {
+        println!("[INFO] {} contains {} records", key, value);
     }
 
     Ok(())
@@ -410,6 +444,7 @@ pub fn pe_fa_demux(
         ext = "";
     }
 
+    let mut nb_records: HashMap<&str, i32> = HashMap::new();
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
@@ -417,6 +452,11 @@ pub fn pe_fa_demux(
             match res {
                 true => {
                     unk = false;
+                    if nb_records.get(value[0]) == None {
+                        nb_records.insert(value[0], 1);
+                    } else {
+                        nb_records.insert(value[0], nb_records[value[0]] + 1);
+                    }
                     write_to_fa(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
@@ -434,6 +474,11 @@ pub fn pe_fa_demux(
         }
 
         if unk {
+            if nb_records.get("unknown_R1.fa") == None {
+                nb_records.insert("unknown_R1.fa", 1);
+            } else {
+                nb_records.insert("unknown_R1.fa", nb_records["unknown_R1.fa"] + 1);
+            }
             write_to_fa(
                 format!("{}.{}", "unknown_R1.fa", ext).as_str(),
                 compression,
@@ -443,12 +488,18 @@ pub fn pe_fa_demux(
             .expect("Cannot write to unknown file");
         }
     }
+
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut unk1 = true;
         for (key, value) in barcode_data.iter() {
             let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
             match res {
                 true => {
+                    if nb_records.get(value[1]) == None {
+                        nb_records.insert(value[1], 1);
+                    } else {
+                        nb_records.insert(value[1], nb_records[value[1]] + 1);
+                    }
                     unk1 = false;
                     write_to_fa(
                         format!("{}.{}", value[1], ext).as_str(),
@@ -467,6 +518,11 @@ pub fn pe_fa_demux(
         }
 
         if unk1 {
+            if nb_records.get("unknown_R2.fa") == None {
+                nb_records.insert("unknown_R2.fa", 1);
+            } else {
+                nb_records.insert("unknown_R2.fa", nb_records["unknown_R2.fa"] + 1);
+            }
             write_to_fa(
                 format!("{}.{}", "unknown_R2.fa", ext).as_str(),
                 compression,
@@ -475,6 +531,12 @@ pub fn pe_fa_demux(
             )
             .expect("Cannot write to unknown file");
         }
+    }
+    let mut sorted: Vec<_> = nb_records.iter().collect();
+    sorted.sort_by_key(|a| a.0);
+
+    for (key, value) in sorted.iter() {
+        println!("[INFO] {} contains {} records", key, value);
     }
 
     Ok(())
@@ -500,6 +562,7 @@ pub fn pe_fq_demux(
         ext = "";
     }
 
+    let mut nb_records: HashMap<&str, i32> = HashMap::new();
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
@@ -507,6 +570,11 @@ pub fn pe_fq_demux(
             match res {
                 true => {
                     unk = false;
+                    if nb_records.get(value[0]) == None {
+                        nb_records.insert(value[0], 1);
+                    } else {
+                        nb_records.insert(value[0], nb_records[value[0]] + 1);
+                    }
                     write_to_fq(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
@@ -524,6 +592,11 @@ pub fn pe_fq_demux(
         }
 
         if unk {
+            if nb_records.get("unknown_R1.fq") == None {
+                nb_records.insert("unknown_R1.fq", 1);
+            } else {
+                nb_records.insert("unknown_R1.fq", nb_records["unknown_R1.fq"] + 1);
+            }
             write_to_fq(
                 format!("{}.{}", "unknown_R1.fq", ext).as_str(),
                 compression,
@@ -539,6 +612,11 @@ pub fn pe_fq_demux(
             let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
             match res {
                 true => {
+                    if nb_records.get(value[1]) == None {
+                        nb_records.insert(value[1], 1);
+                    } else {
+                        nb_records.insert(value[1], nb_records[value[1]] + 1);
+                    }
                     unk1 = false;
                     write_to_fq(
                         format!("{}.{}", value[1], ext).as_str(),
@@ -557,6 +635,11 @@ pub fn pe_fq_demux(
         }
 
         if unk1 {
+            if nb_records.get("unknown_R2.fq") == None {
+                nb_records.insert("unknown_R2.fq", 1);
+            } else {
+                nb_records.insert("unknown_R2.fq", nb_records["unknown_R2.fq"] + 1);
+            }
             write_to_fq(
                 format!("{}.{}", "unknown_R2.fq", ext).as_str(),
                 compression,
@@ -565,6 +648,13 @@ pub fn pe_fq_demux(
             )
             .expect("Cannot write to unknown file");
         }
+    }
+
+    let mut sorted: Vec<_> = nb_records.iter().collect();
+    sorted.sort_by_key(|a| a.0);
+
+    for (key, value) in sorted.iter() {
+        println!("[INFO] {} contains {} records", key, value);
     }
 
     Ok(())
