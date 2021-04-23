@@ -214,7 +214,7 @@ pub fn write_to_fq<'a>(
     filename: &'a str,
     compression: niffler::compression::Format,
     out: &'a str,
-    record: &'a fastq::Record
+    record: &'a fastq::Record,
 ) -> Result<()> {
     let mut file_path = PathBuf::from("");
     file_path.push(out);
@@ -304,7 +304,7 @@ pub fn se_fa_demux(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
                         out,
-                        &record
+                        &record,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -314,7 +314,6 @@ pub fn se_fa_demux(
                     continue;
                 }
             }
-
         }
 
         if unk {
@@ -322,7 +321,7 @@ pub fn se_fa_demux(
                 format!("{}.{}", "unknown.fa", ext).as_str(),
                 compression,
                 out,
-                &record
+                &record,
             )
             .expect("Cannot write to unknown file");
         }
@@ -374,7 +373,7 @@ pub fn se_fq_demux(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
                         out,
-                        &record
+                        &record,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -384,7 +383,6 @@ pub fn se_fq_demux(
                     continue;
                 }
             }
-
         }
 
         if unk {
@@ -392,7 +390,7 @@ pub fn se_fq_demux(
                 format!("{}.{}", "unknown.fq", ext).as_str(),
                 compression,
                 out,
-                &record
+                &record,
             )
             .expect("Cannot write to unknown file");
         }
@@ -432,7 +430,7 @@ pub fn pe_fa_demux(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
                         out,
-                        &f_rec
+                        &f_rec,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -442,7 +440,6 @@ pub fn pe_fa_demux(
                     continue;
                 }
             }
-
         }
 
         if unk {
@@ -450,7 +447,7 @@ pub fn pe_fa_demux(
                 format!("{}.{}", "unknown_R1.fa", ext).as_str(),
                 compression,
                 out,
-                &f_rec
+                &f_rec,
             )
             .expect("Cannot write to unknown file");
         }
@@ -466,7 +463,7 @@ pub fn pe_fa_demux(
                         format!("{}.{}", value[1], ext).as_str(),
                         compression,
                         out,
-                        &r_rec
+                        &r_rec,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -476,7 +473,6 @@ pub fn pe_fa_demux(
                     continue;
                 }
             }
-
         }
 
         if unk1 {
@@ -484,7 +480,7 @@ pub fn pe_fa_demux(
                 format!("{}.{}", "unknown_R2.fa", ext).as_str(),
                 compression,
                 out,
-                &r_rec
+                &r_rec,
             )
             .expect("Cannot write to unknown file");
         }
@@ -524,7 +520,7 @@ pub fn pe_fq_demux(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
                         out,
-                        &f_rec
+                        &f_rec,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -534,7 +530,6 @@ pub fn pe_fq_demux(
                     continue;
                 }
             }
-
         }
 
         if unk {
@@ -542,7 +537,7 @@ pub fn pe_fq_demux(
                 format!("{}.{}", "unknown_R1.fq", ext).as_str(),
                 compression,
                 out,
-                &f_rec
+                &f_rec,
             )
             .expect("Cannot write to unknown file");
         }
@@ -558,7 +553,7 @@ pub fn pe_fq_demux(
                         format!("{}.{}", value[1], ext).as_str(),
                         compression,
                         out,
-                        &r_rec
+                        &r_rec,
                     )
                     .expect("Cannot write to output file");
                     break;
@@ -568,7 +563,6 @@ pub fn pe_fq_demux(
                     continue;
                 }
             }
-
         }
 
         if unk1 {
@@ -576,7 +570,7 @@ pub fn pe_fq_demux(
                 format!("{}.{}", "unknown_R2.fq", ext).as_str(),
                 compression,
                 out,
-                &r_rec
+                &r_rec,
             )
             .expect("Cannot write to unknown file");
         }
@@ -738,6 +732,9 @@ mod tests {
     fn test_split_line_by_tab() {
         let mystring = "Hello\tWorld\tEarth\nBrian\twas\tthere";
         let fields = split_line_by_tab(mystring);
-        assert_eq!(fields, [["Hello", "World", "Earth"], ["Brian", "was", "there"]]);
+        assert_eq!(
+            fields,
+            [["Hello", "World", "Earth"], ["Brian", "was", "there"]]
+        );
     }
 }
