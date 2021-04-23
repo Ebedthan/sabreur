@@ -736,10 +736,8 @@ mod tests {
 
     #[test]
     fn test_split_line_by_tab() {
-        let mystring = read_file_to_string("tests/bc.txt").expect("Cannot");
-        let fields = split_line_by_tab(mystring.as_str());
-        for f in fields {
-            println!("{:?}", f);
-        }
+        let mystring = "Hello\tWorld\tEarth\nBrian\twas\tthere";
+        let fields = split_line_by_tab(mystring);
+        assert_eq!(fields, [["Hello", "World", "Earth"], ["Brian", "was", "there"]]);
     }
 }
