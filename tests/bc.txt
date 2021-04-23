@@ -1,0 +1,10 @@
+GTCTGATG	bc1_R1.fa	bc1_R2.fa
+TGACTTGT	bc2_R1.fa	bc2_R2.fa
+CATGTCTA	bc3_R1.fa	bc3_R2.fa
+TGTACATG	bc4_R1.fa	bc4_R2.fa
+GCGCTAGA	bc5_R1.fa	bc5_R2.fa
+TGTCAGTA	bc6_R1.fa	bc6_R2.fa
+GTTGTCTC	bc7_R1.fa	bc7_R2.fa
+GCTAACGA	bc8_R1.fa	bc8_R2.fa
+TGTACAAG	bc9_R1.fa	bc9_R2.fa
+AGTCAGTC	bc10_R1.fa	bc10_R2.fa

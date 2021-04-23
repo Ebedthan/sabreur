@@ -214,7 +214,7 @@ pub fn write_to_fq<'a>(
     filename: &'a str,
     compression: niffler::compression::Format,
     out: &'a str,
-    record: &'a fastq::Record,
+    record: &'a fastq::Record
 ) -> Result<()> {
     let mut file_path = PathBuf::from("");
     file_path.push(out);
@@ -294,27 +294,35 @@ pub fn se_fa_demux(
     }
 
     while let Some(Ok(record)) = records.next() {
-        let mut actual_fp_r1 = "";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
-                break;
+        let mut unk = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
+            match res {
+                true => {
+                    unk = false;
+                    write_to_fa(
+                        format!("{}.{}", value[0], ext).as_str(),
+                        compression,
+                        out,
+                        &record
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk = true;
+                    continue;
+                }
             }
-            actual_fp_r1 = value[0];
+
         }
-        if !actual_fp_r1.is_empty() {
-            write_to_fa(
-                format!("{}.{}", actual_fp_r1, ext).as_str(),
-                compression,
-                out,
-                &record,
-            )
-            .expect("Cannot write to output file");
-        } else {
+
+        if unk {
             write_to_fa(
                 format!("{}.{}", "unknown.fa", ext).as_str(),
                 compression,
                 out,
-                &record,
+                &record
             )
             .expect("Cannot write to unknown file");
         }
@@ -356,27 +364,35 @@ pub fn se_fq_demux(
     }
 
     while let Some(Ok(record)) = records.next() {
-        let mut actual_fp_r1 = "";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(record.seq())) {
-                break;
+        let mut unk = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
+            match res {
+                true => {
+                    unk = false;
+                    write_to_fq(
+                        format!("{}.{}", value[0], ext).as_str(),
+                        compression,
+                        out,
+                        &record
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk = true;
+                    continue;
+                }
             }
-            actual_fp_r1 = value[0];
+
         }
-        if !actual_fp_r1.is_empty() {
-            write_to_fq(
-                format!("{}.{}", actual_fp_r1, ext).as_str(),
-                compression,
-                out,
-                &record,
-            )
-            .expect("Cannot write to output file");
-        } else {
+
+        if unk {
             write_to_fq(
                 format!("{}.{}", "unknown.fq", ext).as_str(),
                 compression,
                 out,
-                &record,
+                &record
             )
             .expect("Cannot write to unknown file");
         }
@@ -406,53 +422,69 @@ pub fn pe_fa_demux(
     }
 
     while let Some(Ok(f_rec)) = forward_records.next() {
-        let mut actual_fp_r1 = "";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
-                break;
+        let mut unk = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()));
+            match res {
+                true => {
+                    unk = false;
+                    write_to_fa(
+                        format!("{}.{}", value[0], ext).as_str(),
+                        compression,
+                        out,
+                        &f_rec
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk = true;
+                    continue;
+                }
             }
-            actual_fp_r1 = value[0];
+
         }
-        if !actual_fp_r1.is_empty() {
-            write_to_fa(
-                format!("{}.{}", actual_fp_r1, ext).as_str(),
-                compression,
-                out,
-                &f_rec,
-            )
-            .expect("Cannot write to output file");
-        } else {
+
+        if unk {
             write_to_fa(
                 format!("{}.{}", "unknown_R1.fa", ext).as_str(),
                 compression,
                 out,
-                &f_rec,
+                &f_rec
             )
             .expect("Cannot write to unknown file");
         }
     }
     while let Some(Ok(r_rec)) = reverse_records.next() {
-        let mut actual_fp_r2 = "";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
-                break;
+        let mut unk1 = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
+            match res {
+                true => {
+                    unk1 = false;
+                    write_to_fa(
+                        format!("{}.{}", value[1], ext).as_str(),
+                        compression,
+                        out,
+                        &r_rec
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk1 = true;
+                    continue;
+                }
             }
-            actual_fp_r2 = value[1];
+
         }
-        if !actual_fp_r2.is_empty() {
-            write_to_fa(
-                format!("{}.{}", actual_fp_r2, ext).as_str(),
-                compression,
-                out,
-                &r_rec,
-            )
-            .expect("Cannot write to output file");
-        } else {
+
+        if unk1 {
             write_to_fa(
                 format!("{}.{}", "unknown_R2.fa", ext).as_str(),
                 compression,
                 out,
-                &r_rec,
+                &r_rec
             )
             .expect("Cannot write to unknown file");
         }
@@ -481,76 +513,73 @@ pub fn pe_fq_demux(
         ext = "";
     }
 
-    let mut nb_records: HashMap<&str, i32> = HashMap::new();
-
     while let Some(Ok(f_rec)) = forward_records.next() {
-        let mut actual_fp_r1 = "unknown_R1.fq";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(f_rec.seq())) {
-                break;
+        let mut unk = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()));
+            match res {
+                true => {
+                    unk = false;
+                    write_to_fq(
+                        format!("{}.{}", value[0], ext).as_str(),
+                        compression,
+                        out,
+                        &f_rec
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk = true;
+                    continue;
+                }
             }
-            actual_fp_r1 = value[0];
+
         }
 
-        if !actual_fp_r1.is_empty() {
-            write_to_fq(
-                format!("{}.{}", actual_fp_r1, ext).as_str(),
-                compression,
-                out,
-                &f_rec,
-            )
-            .expect("Cannot write to output file");
-        } else {
+        if unk {
             write_to_fq(
                 format!("{}.{}", "unknown_R1.fq", ext).as_str(),
                 compression,
                 out,
-                &f_rec,
+                &f_rec
             )
             .expect("Cannot write to unknown file");
         }
-        if nb_records.contains_key(&actual_fp_r1) {
-            nb_records.insert(actual_fp_r1, nb_records[&actual_fp_r1] + 1);
-        } else {
-            nb_records.insert(actual_fp_r1, 1);
-        }
     }
     while let Some(Ok(r_rec)) = reverse_records.next() {
-        let mut actual_fp_r2 = "unknown_R2.fq";
-        for (key, value) in barcode_data {
-            if bc_cmp(key, &String::from_utf8_lossy(r_rec.seq())) {
-                break;
+        let mut unk1 = true;
+        for (key, value) in barcode_data.iter() {
+            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
+            match res {
+                true => {
+                    unk1 = false;
+                    write_to_fq(
+                        format!("{}.{}", value[1], ext).as_str(),
+                        compression,
+                        out,
+                        &r_rec
+                    )
+                    .expect("Cannot write to output file");
+                    break;
+                }
+                false => {
+                    unk1 = true;
+                    continue;
+                }
             }
-            actual_fp_r2 = value[1];
+
         }
 
-        if !actual_fp_r2.is_empty() {
-            write_to_fq(
-                format!("{}.{}", actual_fp_r2, ext).as_str(),
-                compression,
-                out,
-                &r_rec,
-            )
-            .expect("Cannot write to output file");
-        } else {
+        if unk1 {
             write_to_fq(
                 format!("{}.{}", "unknown_R2.fq", ext).as_str(),
                 compression,
                 out,
-                &r_rec,
+                &r_rec
             )
             .expect("Cannot write to unknown file");
         }
-
-        if nb_records.contains_key(&actual_fp_r2) {
-            nb_records.insert(actual_fp_r2, nb_records[&actual_fp_r2] + 1);
-        } else {
-            nb_records.insert(actual_fp_r2, 1);
-        }
-    }
-
-    for (key, value) in nb_records.iter() {
-        println!("[INFO] File {} contains {} records", key, value);
     }
 
     Ok(())
@@ -707,10 +736,10 @@ mod tests {
 
     #[test]
     fn test_split_line_by_tab() {
-        let mystring = "Hello\tMars\tLinux\nBrian\tfork";
-        let fields = split_line_by_tab(mystring);
-        let myvec = vec![vec!["Hello", "Mars", "Linux"], vec!["Brian", "fork"]];
-
-        assert_eq!(fields, myvec);
+        let mystring = read_file_to_string("tests/bc.txt").expect("Cannot");
+        let fields = split_line_by_tab(mystring.as_str());
+        for f in fields {
+            println!("{:?}", f);
+        }
     }
 }
