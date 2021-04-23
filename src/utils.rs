@@ -132,6 +132,17 @@ pub fn split_line_by_tab(string: &str) -> Vec<Vec<&str>> {
         .collect()
 }
 
+// is_tab_delimited function -----------------------------------------------
+
+/// Check if input barcode file is in correct format
+///
+/// # Example
+/// ```rust
+/// let mystring = "hello\tworld";
+/// let string_fields = split_line_by_tab(mystring);
+/// assert!(is_tab_delimited(string_fields));
+/// ```
+///
 pub fn is_tab_delimited(a_vec: &[Vec<&str>]) -> bool {
     let mut mlen = false;
     for v in a_vec {
@@ -699,6 +710,13 @@ mod tests {
         let seq = "ATCGATCGATCG";
 
         assert_eq!(bc_cmp(bc, seq), false);
+    }
+
+    #[test]
+    fn test_is_tab_delimited() {
+        let file_s = read_file_to_string("tests/bc.txt").expect("Cannot read file");
+        let m_fields = split_line_by_tab(file_s.as_str());
+        assert!(is_tab_delimited(&m_fields));
     }
 
     #[test]
