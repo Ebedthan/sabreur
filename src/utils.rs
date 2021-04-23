@@ -63,38 +63,15 @@ pub fn read_file(path: &Path) -> Result<(Box<dyn io::Read>, niffler::compression
 
     match compression {
         niffler::compression::Format::Gzip => Ok((reader, compression)),
+        niffler::compression::Format::No => Ok((reader, compression)),
         _ => {
-            eprintln!("Provided file is compressed but not gzipped");
+            eprintln!("[ERROR] Provided file is compressed but not gzipped");
             process::exit(1)
         }
     }
 }
 
-// is_fastx function --------------------------------------------------------
-
-/// Validate file type from file extension
-///
-/// # Example
-/// ```rust
-/// let filename = "myfile.fa.gz".to_string();
-/// assert!(is_fastx(filename).is_ok())
-/// ```
-///
-pub fn is_fastx(filename: String) -> Result<(), String> {
-    let ext = vec!["fa", "fas", "fasta", "fastq", "fq", "gz"];
-
-    let path = Path::new(&filename);
-    let f_ext = path.extension().unwrap();
-    let f_last = f_ext.to_str().unwrap();
-
-    if ext.contains(&f_last) {
-        Ok(())
-    } else {
-        Err("Input file is not fasta nor fastq formatted".to_string())
-    }
-}
-
-// get_file_type function ---------------------------------------------------
+/// get_file_type function ---------------------------------------------------
 
 // FileType structure
 #[derive(Debug, PartialEq)]
@@ -153,6 +130,18 @@ pub fn split_line_by_tab(string: &str) -> Vec<Vec<&str>> {
         .lines()
         .map(|line| line.split('\t').collect())
         .collect()
+}
+
+pub fn is_tab_delimited(a_vec: &[Vec<&str>]) -> bool {
+    let mut mlen = false;
+    for v in a_vec {
+        if v.len() == 2 || v.len() == 3 {
+            mlen = true;
+        } else {
+            mlen = false;
+        }
+    }
+    mlen
 }
 
 // Barcode type -------------------------------------------------------------
@@ -679,21 +668,6 @@ mod tests {
             assert_eq!(record.desc(), Some("desc"));
             assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATC");
         }
-    }
-
-    #[test]
-    fn test_is_fastx() {
-        let f1 = "myfile.fa";
-        let f2 = "myfile.fq";
-        let f3 = "myfile.fa.gz";
-        let f4 = "myfile.txt";
-        let f5 = "myfile.txt.xz";
-
-        assert!(is_fastx(f1.to_string()).is_ok());
-        assert!(is_fastx(f2.to_string()).is_ok());
-        assert!(is_fastx(f3.to_string()).is_ok());
-        assert!(is_fastx(f4.to_string()).is_err());
-        assert!(is_fastx(f5.to_string()).is_err());
     }
 
     #[test]

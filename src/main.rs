@@ -23,7 +23,7 @@ fn main() {
     let matches = App::new("sabreur")
         .version("v0.1.0")
         .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("A barcode demultiplexing tool")
+        .about("A barcode demultiplexing tool for fasta and fastq files")
         .arg(
             Arg::with_name("BARCODE")
                 .help("Input barcode file [required]")
@@ -33,14 +33,12 @@ fn main() {
         .arg(
             Arg::with_name("FORWARD")
                 .help("Input forward fasta or fastq file. Can be gzipped [required]")
-                .validator(utils::is_fastx)
                 .required(true)
                 .index(2),
         )
         .arg(
             Arg::with_name("REVERSE")
                 .help("Input reverse fasta or fastq file. Can be gzipped")
-                .validator(utils::is_fastx)
                 .index(3),
         )
         .arg(
@@ -90,20 +88,21 @@ fn main() {
     }
 
     // Handle output dir
-    if Path::new(output).exists() && !force {
+    let output_exists = Path::new(output).exists();
+    if output_exists && !force {
         utils::err(format!("Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).as_str());
         process::exit(1);
-    } else if Path::new(output).exists() && force {
+    } else if output_exists && force {
         utils::msg(format!("Reusing directory {}", output).as_str(), quiet);
         fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
-    } else if !Path::new(output).exists() {
+    } else if !output_exists {
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
     }
 
     // Check File type: fasta or fastq
-    let forward_file_ext = utils::get_file_type(forward).unwrap();
-    let reverse_file_ext = utils::get_file_type(reverse).unwrap();
+    let forward_file_ext = utils::get_file_type(forward);
+    let reverse_file_ext = utils::get_file_type(reverse);
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
         utils::err("Mismatched type of file supplied: one is fasta while other is fastq");
@@ -115,6 +114,11 @@ fn main() {
     let barcode_data = utils::read_file_to_string(barcode).unwrap();
     let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
+    if !utils::is_tab_delimited(&barcode_fields) {
+        utils::err("Provided barcode file is not correcly formated");
+        process::exit(1);
+    }
+
     // Get forward file reader
     let (forward_reader, forward_compression) =
         utils::read_file(&Path::new(forward)).expect("Cannot read input file");
@@ -125,7 +129,7 @@ fn main() {
 
     // Main processing of reads
     match forward_file_ext {
-        utils::FileType::Fasta => match reverse.is_empty() {
+        Some(utils::FileType::Fasta) => match reverse.is_empty() {
             // single-end fasta mode
             true => {
                 for b_vec in barcode_fields.iter() {
@@ -159,7 +163,7 @@ fn main() {
                 .expect("Cannot demultiplex file");
             }
         },
-        utils::FileType::Fastq => match reverse.is_empty() {
+        Some(utils::FileType::Fastq) => match reverse.is_empty() {
             // single-end fastq mode
             true => {
                 for b_vec in barcode_fields.iter() {
@@ -194,6 +198,13 @@ fn main() {
                 .expect("Cannot demultiplex file");
             }
         },
+        // Redundant code as already provided from lines 107-124
+        // But needed to avoid rust warning of non exhaustive case
+        // match coverage
+        None => {
+            utils::err("One of the provided file is not fasta nor fastq");
+            process::exit(1);
+        }
     }
 
     let duration = startime.elapsed();

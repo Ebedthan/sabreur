@@ -5,6 +5,7 @@
 # <img src="./img/ninja.png" width=40em alt="sabreur" /> 🧬 sabreur, a barcode demultiplexing tool for fasta and fastq files.
 
 With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
+
 Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files either gzipped or not. The resulting files are compressed or not following the compression mode of input files. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
 
 
@@ -19,6 +20,9 @@ sabreur barcode.txt input_R1.fq.gz input_R2.fq.gz
 ```
 sabreur barcode.txt input.fa.gz
 ```
+
+Input sequences files can be fasta or fastq, gzipped or not. Just give the sequences, sabreur know how to handle it!
+
 
 ## Requirements
 - [Rust](https://rust-lang.org) in stable channel
