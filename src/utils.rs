@@ -66,7 +66,7 @@ pub fn read_file(path: &Path) -> Result<(Box<dyn io::Read>, niffler::compression
         niffler::compression::Format::No => Ok((reader, compression)),
         _ => {
             eprintln!("[ERROR] Provided file is compressed but not gzipped");
-            process::exit(1)
+            process::exit(1);
         }
     }
 }
@@ -240,10 +240,9 @@ pub fn write_to_fq<'a>(
 /// ```
 ///
 pub fn bc_cmp(bc: &str, seq: &str) -> bool {
-    let slice = &seq[..bc.len()];
     let mut res = false;
 
-    if bc == slice {
+    if bc == &seq[..bc.len()] {
         res = true;
     }
 
@@ -276,6 +275,9 @@ pub fn se_fa_demux(
     out: &str,
 ) -> Result<()> {
     let mut ext = "";
+    // It is not an obligation to check ext.is_empty in this if-else
+    // but it is done here and in subsequent fns to avoid rust warning
+    // for used but unread var before assignment
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = "gz";
     } else {

@@ -5,7 +5,6 @@
 
 extern crate bio;
 extern crate clap;
-extern crate num_cpus;
 
 use std::collections::HashMap;
 use std::fs;
@@ -198,15 +197,13 @@ fn main() {
                 .expect("Cannot demultiplex file");
             }
         },
-        // Redundant code as already provided from lines 107-124
-        // But needed to avoid rust warning of non exhaustive case
-        // match coverage
         None => {
             utils::err("One of the provided file is not fasta nor fastq");
             process::exit(1);
         }
     }
 
+    // Finishing
     let duration = startime.elapsed();
     let seconds = duration.as_secs() % 60;
     let minutes = (duration.as_secs() / 60) % 60;
