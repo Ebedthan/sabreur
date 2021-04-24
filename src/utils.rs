@@ -31,6 +31,21 @@ pub fn msg(message: &str, quiet: bool) {
     }
 }
 
+// warn function -------------------------------------------------------------
+
+/// Print info message to stdout
+///
+/// # Example
+/// ```rust
+/// warn("This i a warning")
+/// ```
+///
+pub fn warn(message: &str, quiet: bool) {
+    if !quiet {
+        println!("[WARNING] {}", message)
+    }
+}
+
 // err function -------------------------------------------------------------
 
 /// Print info message to stdout
@@ -716,6 +731,20 @@ mod tests {
     #[test]
     fn test_msg_quiet() {
         let text = "message";
+        let quiet = true;
+        msg(text, quiet);
+    }
+
+    #[test]
+    fn test_warn_ok() {
+        let text = "warning";
+        let quiet = false;
+        warn(text, quiet);
+    }
+
+    #[test]
+    fn test_warn_quiet() {
+        let text = "warning";
         let quiet = true;
         msg(text, quiet);
     }

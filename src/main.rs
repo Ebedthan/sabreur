@@ -136,6 +136,13 @@ fn main() {
         utils::msg("Provided files are gzipped", quiet);
     }
 
+    if mismatch != 0 {
+        utils::warn(
+            format!("You allowed {} mismatch in your barcode sequence", mismatch).as_str(),
+            quiet,
+        );
+    }
+
     // Main processing of reads
     match forward_file_ext {
         Some(utils::FileType::Fasta) => match reverse.is_empty() {
