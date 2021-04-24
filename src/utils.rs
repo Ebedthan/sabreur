@@ -201,7 +201,6 @@ pub fn write_to_fa<'a>(
         let _write_res = writer
             .write_record(&record)
             .expect("Cannot write to fasta file");
-
     }
 
     Ok(())
@@ -250,9 +249,7 @@ pub fn write_to_fq<'a>(
         let _write_res = writer
             .write_record(&record)
             .expect("Cannot write to fasta file");
-
     }
-    
 
     Ok(())
 }
