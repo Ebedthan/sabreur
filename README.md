@@ -57,7 +57,7 @@ ARGS:
 git clone https://github.com/Ebedthan/sabreur.git
 cd sabreur
 
-cargo build
+cargo build --release
 cargo test
 cargo install --path .
 ```
