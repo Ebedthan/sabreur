@@ -126,10 +126,14 @@ pub fn read_file_to_string(filename: &str) -> io::Result<String> {
 /// ```
 ///
 pub fn split_line_by_tab(string: &str) -> Vec<Vec<&str>> {
-    string
-        .lines()
-        .map(|line| line.split('\t').collect())
-        .collect()
+    if string.contains('\t') {
+        string
+            .lines()
+            .map(|line| line.split('\t').collect())
+            .collect()
+    } else {
+        vec![vec![""]]
+    }
 }
 
 // is_tab_delimited function -----------------------------------------------
@@ -731,9 +735,16 @@ mod tests {
 
     #[test]
     fn test_is_tab_delimited() {
-        let file_s = read_file_to_string("tests/bc.txt").expect("Cannot read file");
+        let file_s = read_file_to_string("tests/bc_pe_fa.txt").expect("Cannot read file");
         let m_fields = split_line_by_tab(file_s.as_str());
         assert!(is_tab_delimited(&m_fields));
+    }
+
+    #[test]
+    fn test_is_tab_delimited_not_ok() {
+        let file_s = "abcdefgthiop";
+        let m_fields = split_line_by_tab(file_s);
+        assert!(!is_tab_delimited(&m_fields));
     }
 
     #[test]
@@ -751,6 +762,23 @@ mod tests {
         std::fs::remove_file("tests/id1.fa.gz").expect("Cannot delete tmp file");
         std::fs::remove_file("tests/id2.fa.gz").expect("Cannot delete tmp file");
         std::fs::remove_file("tests/unknown.fa.gz").expect("Cannot delete tmp file");
+    }
+
+    #[test]
+    fn test_se_fq_demux() {
+        let p = Path::new("tests/test2.fq.gz");
+        let out = "tests";
+        let (fr, cmp) = read_file(&p).expect("Cannot open");
+        let mut records = fastq::Reader::new(fr).records();
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("ACCGTA", vec!["id1.fq"]);
+        bc_data.insert("ATTGTT", vec!["id2.fq"]);
+
+        assert!(se_fq_demux(&mut records, cmp, &bc_data, out).is_ok());
+
+        std::fs::remove_file("tests/id1.fq.gz").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/id2.fq.gz").expect("Cannot delete tmp file");
+        std::fs::remove_file("tests/unknown.fq.gz").expect("Cannot delete tmp file");
     }
 
     #[test]
@@ -836,6 +864,16 @@ mod tests {
         assert_eq!(
             fields,
             [["Hello", "World", "Earth"], ["Brian", "was", "there"]]
+        );
+    }
+
+    #[test]
+    fn test_split_line_by_tab_not_ok() {
+        let mystring = "HelloWorld";
+        let fields = split_line_by_tab(mystring);
+        assert_eq!(
+            fields,
+            [[""]]
         );
     }
 }
