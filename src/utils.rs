@@ -871,9 +871,6 @@ mod tests {
     fn test_split_line_by_tab_not_ok() {
         let mystring = "HelloWorld";
         let fields = split_line_by_tab(mystring);
-        assert_eq!(
-            fields,
-            [[""]]
-        );
+        assert_eq!(fields, [[""]]);
     }
 }
