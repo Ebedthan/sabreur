@@ -271,14 +271,19 @@ pub fn write_to_fq<'a>(
 ///
 /// ```
 ///
-pub fn bc_cmp(bc: &str, seq: &str) -> bool {
-    let mut res = false;
+pub fn bc_cmp(bc: &str, seq: &str, mismatch: i32) -> bool {
+    let s = &seq[..bc.len()];
 
-    if bc == &seq[..bc.len()] {
-        res = true;
-    }
+    // This wonderful line below compute the number of
+    // character mismatch between two strings
+    let nb_mismatch: i32 = bc
+        .as_bytes()
+        .iter()
+        .zip(s.as_bytes().iter())
+        .map(|(a, b)| (a != b) as i32)
+        .sum();
 
-    res
+    nb_mismatch <= mismatch
 }
 
 // se_fa_demux function -----------------------------------------------------
@@ -304,6 +309,7 @@ pub fn se_fa_demux(
     records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
+    mismatch: i32,
     out: &str,
 ) -> Result<()> {
     let mut ext = "";
@@ -320,7 +326,7 @@ pub fn se_fa_demux(
     while let Some(Ok(record)) = records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()), mismatch);
             match res {
                 true => {
                     if nb_records.get(value[0]) == None {
@@ -393,6 +399,7 @@ pub fn se_fq_demux(
     records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
+    mismatch: i32,
     out: &str,
 ) -> Result<()> {
     let mut ext = "";
@@ -406,7 +413,7 @@ pub fn se_fq_demux(
     while let Some(Ok(record)) = records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()), mismatch);
             match res {
                 true => {
                     unk = false;
@@ -467,6 +474,7 @@ pub fn pe_fa_demux(
     reverse_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
+    mismatch: i32,
     out: &str,
 ) -> Result<()> {
     let mut ext = "";
@@ -480,7 +488,7 @@ pub fn pe_fa_demux(
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()), mismatch);
             match res {
                 true => {
                     unk = false;
@@ -524,7 +532,7 @@ pub fn pe_fa_demux(
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut unk1 = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()), mismatch);
             match res {
                 true => {
                     if nb_records.get(value[1]) == None {
@@ -585,6 +593,7 @@ pub fn pe_fq_demux(
     reverse_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &Barcode,
+    mismatch: i32,
     out: &str,
 ) -> Result<()> {
     let mut ext = "";
@@ -598,7 +607,7 @@ pub fn pe_fq_demux(
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(f_rec.seq()), mismatch);
             match res {
                 true => {
                     unk = false;
@@ -641,7 +650,7 @@ pub fn pe_fq_demux(
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut unk1 = true;
         for (key, value) in barcode_data.iter() {
-            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()));
+            let res = bc_cmp(key, &String::from_utf8_lossy(r_rec.seq()), mismatch);
             match res {
                 true => {
                     if nb_records.get(value[1]) == None {
@@ -722,7 +731,7 @@ mod tests {
         let seq = "ATCGATCGATCG";
         let bc = "ATCG";
 
-        assert!(bc_cmp(bc, seq));
+        assert!(bc_cmp(bc, seq, 0));
     }
 
     #[test]
@@ -730,7 +739,23 @@ mod tests {
         let bc = "TGCA";
         let seq = "ATCGATCGATCG";
 
-        assert_eq!(bc_cmp(bc, seq), false);
+        assert_eq!(bc_cmp(bc, seq, 0), false);
+    }
+
+    #[test]
+    fn test_bc_cmp_mismatch_ok() {
+        let bc = "AACG";
+        let seq = "ATCGATCGATCG";
+
+        assert!(bc_cmp(bc, seq, 1));
+    }
+
+    #[test]
+    fn test_bc_cmp_mismatch_not_ok() {
+        let bc = "AACG";
+        let seq = "ATCGATCGATCG";
+
+        assert_eq!(bc_cmp(bc, seq, 0), false);
     }
 
     #[test]
@@ -757,7 +782,7 @@ mod tests {
         bc_data.insert("ACCGTA", vec!["id1.fa"]);
         bc_data.insert("ATTGTT", vec!["id2.fa"]);
 
-        assert!(se_fa_demux(&mut records, cmp, &bc_data, out).is_ok());
+        assert!(se_fa_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
 
         std::fs::remove_file("tests/id1.fa.gz").expect("Cannot delete tmp file");
         std::fs::remove_file("tests/id2.fa.gz").expect("Cannot delete tmp file");
@@ -774,7 +799,7 @@ mod tests {
         bc_data.insert("ACCGTA", vec!["id1.fq"]);
         bc_data.insert("ATTGTT", vec!["id2.fq"]);
 
-        assert!(se_fq_demux(&mut records, cmp, &bc_data, out).is_ok());
+        assert!(se_fq_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
 
         std::fs::remove_file("tests/id1.fq.gz").expect("Cannot delete tmp file");
         std::fs::remove_file("tests/id2.fq.gz").expect("Cannot delete tmp file");

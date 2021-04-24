@@ -41,6 +41,14 @@ fn main() {
                 .index(3),
         )
         .arg(
+            Arg::with_name("mismatch")
+                .help("Maximum number of mismatches allowed in a barcode")
+                .short("m")
+                .long("mismatch")
+                .value_name("N")
+                .default_value("0"),
+        )
+        .arg(
             Arg::with_name("output")
                 .help("Output folder")
                 .short("o")
@@ -76,6 +84,8 @@ fn main() {
 
     let barcode = matches.value_of("BARCODE").unwrap();
     let output = matches.value_of("output").unwrap();
+    let mis = matches.value_of("mismatch").unwrap().to_string();
+    let mismatch = mis.parse::<i32>().unwrap();
     let force = matches.is_present("force");
     let quiet = matches.is_present("quiet");
 
@@ -139,6 +149,7 @@ fn main() {
                     &mut fa_forward_records,
                     forward_compression,
                     &barcode_info,
+                    mismatch,
                     output,
                 )
                 .expect("Cannot demutiplex file");
@@ -157,6 +168,7 @@ fn main() {
                     &mut fa_reverse_records,
                     reverse_compression,
                     &barcode_info,
+                    mismatch,
                     output,
                 )
                 .expect("Cannot demultiplex file");
@@ -173,6 +185,7 @@ fn main() {
                     &mut fq_forward_records,
                     forward_compression,
                     &barcode_info,
+                    mismatch,
                     output,
                 )
                 .expect("Cannot demultiplex file");
@@ -192,6 +205,7 @@ fn main() {
                     &mut fq_reverse_records,
                     reverse_compression,
                     &barcode_info,
+                    mismatch,
                     output,
                 )
                 .expect("Cannot demultiplex file");

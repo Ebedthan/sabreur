@@ -23,6 +23,27 @@ sabreur barcode.txt input.fa.gz
 
 Input sequences files can be fasta or fastq, gzipped or not. Just give the sequences, sabreur know how to handle it!
 
+## Command-line arguments
+
+```
+USAGE:
+    sabreur [FLAGS] [OPTIONS] <BARCODE> <FORWARD> [REVERSE]
+
+FLAGS:
+        --force      Force reuse of output directory
+    -h, --help       Prints help information
+    -q, --quiet      Decrease program verbosity
+    -V, --version    Prints version information
+
+OPTIONS:
+    -m, --mismatch <N>    Maximum number of mismatches allowed in barcode [default: 0]
+    -o, --out <FOLDER>    Output folder [default: sabreur_out]
+
+ARGS:
+    <BARCODE>    Input barcode file [required]
+    <FORWARD>    Input forward fasta or fastq file. Can be gzipped [required]
+    <REVERSE>    Input reverse fasta or fastq file. Can be gzipped
+```
 
 ## Requirements
 - [Rust](https://rust-lang.org) in stable channel
@@ -32,7 +53,6 @@ Input sequences files can be fasta or fastq, gzipped or not. Just give the seque
 ## Installation
 
 ### From source
-
 ```
 git clone https://github.com/Ebedthan/sabreur.git
 cd sabreur
@@ -44,6 +64,7 @@ cargo install --path .
 
 ## Note
 Sabreur use a special barcode tab-delimited file format in the form:
+
 ```
 barcode1    barcode1_file1.fq   barcode1_file2.fq
 barcode2    barcode2_file1.fq   barcode2_file2.fq
