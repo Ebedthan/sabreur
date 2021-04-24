@@ -142,7 +142,7 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demutiplex file");
-            }
+            },
             // paired-end fasta mode
             false => {
                 for b_vec in barcode_fields.iter() {
@@ -160,7 +160,7 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
-            }
+            },
         },
         Some(utils::FileType::Fastq) => match reverse.is_empty() {
             // single-end fastq mode
@@ -176,7 +176,7 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
-            }
+            },
             // paired-end fastq mode
             false => {
                 for b_vec in barcode_fields.iter() {
@@ -195,7 +195,7 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
-            }
+            },
         },
         None => {
             utils::err("One of the provided file is not fasta nor fastq");

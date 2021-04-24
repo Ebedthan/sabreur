@@ -17,9 +17,6 @@ bio           = "*"
 clap          = "~2.33"
 niffler       = "2.3"
 
-[dev-dependencies]
-criterion = "0.3"
-
 [profile.release]
 opt-level       = 3
 debug           = true

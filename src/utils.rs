@@ -185,15 +185,24 @@ pub fn write_to_fa<'a>(
         .append(true)
         .create(true)
         .open(file_path)?;
-    let handle = niffler::get_writer(
-        Box::new(file),
-        compression,
-        niffler::compression::Level::One,
-    )?;
-    let mut writer = fasta::Writer::new(handle);
-    let _write_res = writer
-        .write_record(&record)
-        .expect("Cannot write to fasta file");
+    if compression == niffler::compression::Format::Gzip {
+        let handle = niffler::get_writer(
+            Box::new(file),
+            compression,
+            niffler::compression::Level::One,
+        )?;
+        let mut writer = fasta::Writer::new(handle);
+        let _write_res = writer
+            .write_record(&record)
+            .expect("Cannot write to fasta file");
+    } else {
+        let handle = io::BufWriter::new(file);
+        let mut writer = fasta::Writer::new(handle);
+        let _write_res = writer
+            .write_record(&record)
+            .expect("Cannot write to fasta file");
+
+    }
 
     Ok(())
 }
@@ -224,15 +233,26 @@ pub fn write_to_fq<'a>(
         .append(true)
         .create(true)
         .open(file_path)?;
-    let handle = niffler::get_writer(
-        Box::new(file),
-        compression,
-        niffler::compression::Level::One,
-    )?;
-    let mut writer = fastq::Writer::new(handle);
-    let _write_res = writer
-        .write_record(&record)
-        .expect("Cannot write to fasta file");
+
+    if compression == niffler::compression::Format::Gzip {
+        let handle = niffler::get_writer(
+            Box::new(file),
+            compression,
+            niffler::compression::Level::One,
+        )?;
+        let mut writer = fastq::Writer::new(handle);
+        let _write_res = writer
+            .write_record(&record)
+            .expect("Cannot write to fasta file");
+    } else {
+        let handle = io::BufWriter::new(file);
+        let mut writer = fastq::Writer::new(handle);
+        let _write_res = writer
+            .write_record(&record)
+            .expect("Cannot write to fasta file");
+
+    }
+    
 
     Ok(())
 }
@@ -388,12 +408,12 @@ pub fn se_fq_demux(
             let res = bc_cmp(key, &String::from_utf8_lossy(record.seq()));
             match res {
                 true => {
+                    unk = false;
                     if nb_records.get(value[0]) == None {
                         nb_records.insert(value[0], 1);
                     } else {
                         nb_records.insert(value[0], nb_records[value[0]] + 1);
                     }
-                    unk = false;
                     write_to_fq(
                         format!("{}.{}", value[0], ext).as_str(),
                         compression,
