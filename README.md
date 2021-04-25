@@ -1,3 +1,4 @@
+[![Crates.io](https://img.shields.io/crates/v/sabreur.svg)](https://crates.io/crates/sabreur)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/Ebedthan/sabreur/blob/master/LICENSE)
 ![CI](https://github.com/Ebedthan/sabreur/workflows/CI/badge.svg)
 [![CodeCov](https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/sabreur)
@@ -51,6 +52,13 @@ ARGS:
 
 
 ## Installation
+
+## From crates.io
+After installing Rust and cargo, do:
+
+```
+cargo install sabreur
+```
 
 ### From source
 ```
