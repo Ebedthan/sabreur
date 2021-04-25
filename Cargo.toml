@@ -9,7 +9,7 @@ homepage = "https://github.com/Ebedthan/sabreur"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
-keywords = ["bioinformatics", "demultiplexing", "sequence analysis"] 
+keywords = ["bioinformatics", "demultiplexing"] 
 
 [dependencies]
 anyhow        = "1.0.40"
