@@ -13,7 +13,7 @@ keywords = ["bioinformatics", "demultiplexing"]
 
 [dependencies]
 anyhow        = "1.0.40"
-bio           = "*"
+bio           = "0.33.0"
 clap          = "~2.33"
 niffler       = "2.3"
 
