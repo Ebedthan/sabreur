@@ -576,7 +576,7 @@ pub fn pe_fq_demux(
     }
 
     let mut nb_records: HashMap<&str, i32> = HashMap::new();
-    
+
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {

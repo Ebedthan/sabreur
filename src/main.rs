@@ -98,11 +98,14 @@ fn main() {
     let mut err_handle = stderr.lock();
 
     if !quiet {
-        writeln!(out_handle, "[INFO] sabreur v{} starting up!", VERSION).expect("Cannot write to stdout");
+        writeln!(out_handle, "[INFO] sabreur v{} starting up!", VERSION)
+            .expect("Cannot write to stdout");
         if reverse.is_empty() {
-            writeln!(out_handle, "[INFO] You are in single-end mode").expect("Cannot write to stdout");
+            writeln!(out_handle, "[INFO] You are in single-end mode")
+                .expect("Cannot write to stdout");
         } else {
-            writeln!(out_handle, "[INFO] You are in paired-end mode").expect("Cannot write to stdout");
+            writeln!(out_handle, "[INFO] You are in paired-end mode")
+                .expect("Cannot write to stdout");
         }
     }
 
@@ -113,7 +116,8 @@ fn main() {
         process::exit(1);
     } else if output_exists && force {
         if !quiet {
-            writeln!(out_handle, "[INFO] Reusing directory {}", output).expect("Cannot write to stdout");
+            writeln!(out_handle, "[INFO] Reusing directory {}", output)
+                .expect("Cannot write to stdout");
         }
         fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
@@ -126,7 +130,11 @@ fn main() {
     let reverse_file_ext = utils::get_file_type(reverse);
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
-        writeln!(err_handle, "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq").expect("Cannot write to stderr");
+        writeln!(
+            err_handle,
+            "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq"
+        )
+        .expect("Cannot write to stderr");
         process::exit(1);
     }
 
@@ -136,7 +144,11 @@ fn main() {
     let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
     if !utils::is_tab_delimited(&barcode_fields) {
-        writeln!(err_handle, "[ERROR] Provided barcode file is not correcly formated").expect("Cannot write to stderr");
+        writeln!(
+            err_handle,
+            "[ERROR] Provided barcode file is not correcly formated"
+        )
+        .expect("Cannot write to stderr");
         process::exit(1);
     }
 
@@ -149,7 +161,12 @@ fn main() {
     }
 
     if mismatch != 0 && !quiet {
-        writeln!(out_handle, "[WARN] You allowed {} mismatch in your barcode sequence", mismatch).expect("Cannot write to stdout");
+        writeln!(
+            out_handle,
+            "[WARN] You allowed {} mismatch in your barcode sequence",
+            mismatch
+        )
+        .expect("Cannot write to stdout");
     }
 
     // Main processing of reads
@@ -228,7 +245,11 @@ fn main() {
             }
         },
         None => {
-            writeln!(err_handle, "[ERROR] One of the provided file is not fasta nor fastq").expect("Cannot write to stderr");
+            writeln!(
+                err_handle,
+                "[ERROR] One of the provided file is not fasta nor fastq"
+            )
+            .expect("Cannot write to stderr");
             process::exit(1);
         }
     }
@@ -239,7 +260,13 @@ fn main() {
     let minutes = (duration.as_secs() / 60) % 60;
     let hours = (duration.as_secs() / 60) / 60;
 
-    writeln!(out_handle, "[INFO] {} {}", "Results are available in", output).expect("Cannot write to stdout");
-    writeln!(out_handle, "[INFO] Walltime: {}h:{}m:{}s", hours, minutes, seconds).expect("Cannot write to stdout");
+    writeln!(out_handle, "[INFO] Results are available in {}", output)
+        .expect("Cannot write to stdout");
+    writeln!(
+        out_handle,
+        "[INFO] Walltime: {}h:{}m:{}s",
+        hours, minutes, seconds
+    )
+    .expect("Cannot write to stdout");
     writeln!(out_handle, "Thanks. Share. Come again!").expect("Cannot write to stdout");
 }
