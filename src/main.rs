@@ -8,14 +8,17 @@ extern crate clap;
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::Path;
 use std::process;
 use std::time::Instant;
 
-use bio::io;
+use bio::io::{fasta, fastq};
 use clap::{App, Arg};
 
 mod utils;
+
+const VERSION: &str = "0.1.1";
 
 fn main() {
     // Define command-line arguments ----------------------------------------
@@ -89,20 +92,29 @@ fn main() {
     let force = matches.is_present("force");
     let quiet = matches.is_present("quiet");
 
-    utils::msg("sabreur v0.1.0 starting up!", quiet);
-    if reverse.is_empty() {
-        utils::msg("You are in single-end mode", quiet);
-    } else {
-        utils::msg("You are in paired-end mode", quiet);
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    let mut out_handle = stdout.lock();
+    let mut err_handle = stderr.lock();
+
+    if !quiet {
+        writeln!(out_handle, "[INFO] sabreur v{} starting up!", VERSION).expect("Cannot write to stdout");
+        if reverse.is_empty() {
+            writeln!(out_handle, "[INFO] You are in single-end mode").expect("Cannot write to stdout");
+        } else {
+            writeln!(out_handle, "[INFO] You are in paired-end mode").expect("Cannot write to stdout");
+        }
     }
 
     // Handle output dir
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
-        utils::err(format!("Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).as_str());
+        writeln!(err_handle, "[ERROR] Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
         process::exit(1);
     } else if output_exists && force {
-        utils::msg(format!("Reusing directory {}", output).as_str(), quiet);
+        if !quiet {
+            writeln!(out_handle, "[INFO] Reusing directory {}", output).expect("Cannot write to stdout");
+        }
         fs::remove_dir_all(Path::new(output)).expect("Cannot remove existing directory");
         fs::create_dir(Path::new(output)).expect("Cannot create output directory");
     } else if !output_exists {
@@ -114,7 +126,7 @@ fn main() {
     let reverse_file_ext = utils::get_file_type(reverse);
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
-        utils::err("Mismatched type of file supplied: one is fasta while other is fastq");
+        writeln!(err_handle, "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq").expect("Cannot write to stderr");
         process::exit(1);
     }
 
@@ -124,7 +136,7 @@ fn main() {
     let barcode_fields = utils::split_line_by_tab(&barcode_data);
 
     if !utils::is_tab_delimited(&barcode_fields) {
-        utils::err("Provided barcode file is not correcly formated");
+        writeln!(err_handle, "[ERROR] Provided barcode file is not correcly formated").expect("Cannot write to stderr");
         process::exit(1);
     }
 
@@ -132,15 +144,12 @@ fn main() {
     let (forward_reader, forward_compression) =
         utils::read_file(&Path::new(forward)).expect("Cannot read input file");
 
-    if forward_compression == niffler::compression::Format::Gzip {
-        utils::msg("Provided files are gzipped", quiet);
+    if forward_compression == niffler::compression::Format::Gzip && !quiet {
+        writeln!(out_handle, "[INFO] Provided files are gzipped").expect("Cannot write to stdout");
     }
 
-    if mismatch != 0 {
-        utils::warn(
-            format!("You allowed {} mismatch in your barcode sequence", mismatch).as_str(),
-            quiet,
-        );
+    if mismatch != 0 && !quiet {
+        writeln!(out_handle, "[WARN] You allowed {} mismatch in your barcode sequence", mismatch).expect("Cannot write to stdout");
     }
 
     // Main processing of reads
@@ -151,7 +160,7 @@ fn main() {
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1]]);
                 }
-                let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                let mut fa_forward_records = fasta::Reader::new(forward_reader).records();
                 utils::se_fa_demux(
                     &mut fa_forward_records,
                     forward_compression,
@@ -166,10 +175,10 @@ fn main() {
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
                 }
-                let mut fa_forward_records = io::fasta::Reader::new(forward_reader).records();
+                let mut fa_forward_records = fasta::Reader::new(forward_reader).records();
                 let (reverse_reader, reverse_compression) =
                     utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-                let mut fa_reverse_records = io::fasta::Reader::new(reverse_reader).records();
+                let mut fa_reverse_records = fasta::Reader::new(reverse_reader).records();
                 utils::pe_fa_demux(
                     &mut fa_forward_records,
                     &mut fa_reverse_records,
@@ -187,7 +196,7 @@ fn main() {
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1]]);
                 }
-                let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                let mut fq_forward_records = fastq::Reader::new(forward_reader).records();
                 utils::se_fq_demux(
                     &mut fq_forward_records,
                     forward_compression,
@@ -202,10 +211,10 @@ fn main() {
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
                 }
-                let mut fq_forward_records = io::fastq::Reader::new(forward_reader).records();
+                let mut fq_forward_records = fastq::Reader::new(forward_reader).records();
                 let (reverse_reader, reverse_compression) =
                     utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
-                let mut fq_reverse_records = io::fastq::Reader::new(reverse_reader).records();
+                let mut fq_reverse_records = fastq::Reader::new(reverse_reader).records();
 
                 utils::pe_fq_demux(
                     &mut fq_forward_records,
@@ -219,7 +228,7 @@ fn main() {
             }
         },
         None => {
-            utils::err("One of the provided file is not fasta nor fastq");
+            writeln!(err_handle, "[ERROR] One of the provided file is not fasta nor fastq").expect("Cannot write to stderr");
             process::exit(1);
         }
     }
@@ -230,13 +239,7 @@ fn main() {
     let minutes = (duration.as_secs() / 60) % 60;
     let hours = (duration.as_secs() / 60) / 60;
 
-    utils::msg(
-        format!("{} {}", "Results are available in", output).as_str(),
-        quiet,
-    );
-    utils::msg(
-        format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(),
-        quiet,
-    );
-    utils::msg("Thanks. Share. Come again!", quiet);
+    writeln!(out_handle, "[INFO] {} {}", "Results are available in", output).expect("Cannot write to stdout");
+    writeln!(out_handle, "[INFO] Walltime: {}h:{}m:{}s", hours, minutes, seconds).expect("Cannot write to stdout");
+    writeln!(out_handle, "Thanks. Share. Come again!").expect("Cannot write to stdout");
 }
