@@ -5,8 +5,8 @@
 
 extern crate bio;
 extern crate clap;
-extern crate human_panic;
 extern crate exitcode;
+extern crate human_panic;
 
 use std::collections::HashMap;
 use std::fs;
@@ -118,7 +118,7 @@ fn main() {
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
         writeln!(err_handle, "[ERROR] Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
-        process::exit(1);
+        process::exit(exitcode::CANTCREAT);
     } else if output_exists && force {
         if !quiet {
             writeln!(out_handle, "[INFO] Reusing directory {}", output)
@@ -140,7 +140,7 @@ fn main() {
             "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq"
         )
         .expect("Cannot write to stderr");
-        process::exit(1);
+        process::exit(exitcode::DATAERR);
     }
 
     // Read data from barcode file
@@ -154,7 +154,7 @@ fn main() {
             "[ERROR] Provided barcode file is not correcly formated"
         )
         .expect("Cannot write to stderr");
-        process::exit(1);
+        process::exit(exitcode::DATAERR);
     }
 
     // Get forward file reader
@@ -255,7 +255,7 @@ fn main() {
                 "[ERROR] One of the provided file is not fasta nor fastq"
             )
             .expect("Cannot write to stderr");
-            process::exit(1);
+            process::exit(exitcode::DATAERR);
         }
     }
 
@@ -274,4 +274,6 @@ fn main() {
     )
     .expect("Cannot write to stdout");
     writeln!(out_handle, "Thanks. Share. Come again!").expect("Cannot write to stdout");
+
+    process::exit(exitcode::OK);
 }
