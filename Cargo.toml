@@ -1,6 +1,6 @@
 [package]
 name = "sabreur"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = ["CODE_OF_CONDUCT.md", "tests/*"]
