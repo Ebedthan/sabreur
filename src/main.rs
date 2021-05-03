@@ -5,6 +5,8 @@
 
 extern crate bio;
 extern crate clap;
+extern crate human_panic;
+extern crate exitcode;
 
 use std::collections::HashMap;
 use std::fs;
@@ -15,12 +17,15 @@ use std::time::Instant;
 
 use bio::io::{fasta, fastq};
 use clap::{App, Arg};
+use human_panic::setup_panic;
 
 mod utils;
 
 const VERSION: &str = "0.1.1";
 
 fn main() {
+    setup_panic!();
+
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
         .version("v0.1.0")
