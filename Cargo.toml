@@ -3,17 +3,17 @@ name = "sabreur"
 version = "0.1.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
-exclude = ["img/*", "tests/*"]
+exclude = ["CODE_OF_CONDUCT.md", "tests/*"]
 description = "sabreur is a barcode demultiplexing tool for fasta and fastq files"
 homepage = "https://github.com/Ebedthan/sabreur"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
-keywords = ["bioinformatics", "demultiplexing", "sequence analysis", "next-generation sequencing"] 
+keywords = ["bioinformatics", "demultiplexing"] 
 
 [dependencies]
 anyhow        = "1.0.40"
-bio           = "*"
+bio           = "0.33.0"
 clap          = "~2.33"
 niffler       = "2.3"
 

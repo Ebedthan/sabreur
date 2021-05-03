@@ -16,49 +16,6 @@ extern crate niffler;
 use anyhow::Result;
 use bio::io::{fasta, fastq};
 
-// msg function -------------------------------------------------------------
-
-/// Print info message to stdout
-///
-/// # Example
-/// ```rust
-/// msg("Hello world!")
-/// ```
-///
-pub fn msg(message: &str, quiet: bool) {
-    if !quiet {
-        println!("[INFO] {}", message)
-    }
-}
-
-// warn function -------------------------------------------------------------
-
-/// Print info message to stdout
-///
-/// # Example
-/// ```rust
-/// warn("This i a warning")
-/// ```
-///
-pub fn warn(message: &str, quiet: bool) {
-    if !quiet {
-        println!("[WARNING] {}", message)
-    }
-}
-
-// err function -------------------------------------------------------------
-
-/// Print info message to stdout
-///
-/// # Example
-/// ```rust
-/// err("Error: file not found")
-/// ```
-///
-pub fn err(message: &str) {
-    eprintln!("[ERROR] {}", message)
-}
-
 // read_file function -------------------------------------------------------
 
 /// Get reader and compression format of file
@@ -619,6 +576,7 @@ pub fn pe_fq_demux(
     }
 
     let mut nb_records: HashMap<&str, i32> = HashMap::new();
+
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut unk = true;
         for (key, value) in barcode_data.iter() {
@@ -720,40 +678,6 @@ pub fn pe_fq_demux(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_msg_ok() {
-        let text = "message";
-        let quiet = false;
-        msg(text, quiet);
-    }
-
-    #[test]
-    fn test_msg_quiet() {
-        let text = "message";
-        let quiet = true;
-        msg(text, quiet);
-    }
-
-    #[test]
-    fn test_warn_ok() {
-        let text = "warning";
-        let quiet = false;
-        warn(text, quiet);
-    }
-
-    #[test]
-    fn test_warn_quiet() {
-        let text = "warning";
-        let quiet = true;
-        msg(text, quiet);
-    }
-
-    #[test]
-    fn test_err() {
-        let error = "error";
-        err(error);
-    }
 
     #[test]
     fn test_bc_cmp_ok() {
