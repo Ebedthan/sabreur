@@ -1,2 +1,5 @@
 /target
 /sabreur_out
+./github/workflows/mean_bean_ci.yml
+./github/workflows/mean_bean_deploy.yml
+./github/workflows/security_audit.yml
