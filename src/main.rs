@@ -117,7 +117,7 @@ fn main() {
     // Handle output dir
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
-        writeln!(err_handle, "[ERROR] Specified output folder: {}, already exists! Please change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
+        writeln!(err_handle, "[ERROR] Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
         process::exit(exitcode::CANTCREAT);
     } else if output_exists && force {
         if !quiet {
@@ -142,29 +142,13 @@ fn main() {
         .expect("Cannot write to stderr");
         process::exit(exitcode::DATAERR);
     }
-
+    println!("START {:?}", startime.elapsed());
     // Read data from barcode file
     let mut barcode_info: utils::Barcode = HashMap::new();
-    let barcode_data = utils::read_file_to_string(barcode).unwrap();
-    let barcode_fields = utils::split_line_by_tab(&barcode_data);
+    let barcode_data = fs::read_to_string(barcode).expect("Cannot read barcode file");
+    let barcode_fields = utils::split_by_tab(&barcode_data).unwrap();
 
-    if !utils::is_tab_delimited(&barcode_fields) {
-        writeln!(
-            err_handle,
-            "[ERROR] Provided barcode file is not correcly formated"
-        )
-        .expect("Cannot write to stderr");
-        process::exit(exitcode::DATAERR);
-    }
-
-    // Get forward file reader
-    let (forward_reader, forward_compression) =
-        utils::read_file(&Path::new(forward)).expect("Cannot read input file");
-
-    if forward_compression == niffler::compression::Format::Gzip && !quiet {
-        writeln!(out_handle, "[INFO] Provided files are gzipped").expect("Cannot write to stdout");
-    }
-
+    println!("COMPRESSION {:?}", startime.elapsed());
     if mismatch != 0 && !quiet {
         writeln!(
             out_handle,
@@ -174,18 +158,26 @@ fn main() {
         .expect("Cannot write to stdout");
     }
 
+    println!("MISMATCH {:?}", startime.elapsed());
     // Main processing of reads
     match forward_file_ext {
         Some(utils::FileType::Fasta) => match reverse.is_empty() {
             // single-end fasta mode
             true => {
+                // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1]]);
                 }
+
+                // Get forward reader and compression format
+                let (forward_reader, compression) =
+                    utils::read_file(&Path::new(forward)).expect("Cannot read input file");
                 let mut fa_forward_records = fasta::Reader::new(forward_reader).records();
+
+                // Demultiplexing
                 utils::se_fa_demux(
                     &mut fa_forward_records,
-                    forward_compression,
+                    compression,
                     &barcode_info,
                     mismatch,
                     output,
@@ -194,17 +186,25 @@ fn main() {
             }
             // paired-end fasta mode
             false => {
+                // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
                 }
+
+                // Get files reader and compressions format
+                let (forward_reader, compression) =
+                    utils::read_file(&Path::new(forward)).expect("Cannot read input file");
                 let mut fa_forward_records = fasta::Reader::new(forward_reader).records();
-                let (reverse_reader, reverse_compression) =
+
+                let (reverse_reader, _compression) =
                     utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
                 let mut fa_reverse_records = fasta::Reader::new(reverse_reader).records();
+
+                // Demultiplexing
                 utils::pe_fa_demux(
                     &mut fa_forward_records,
                     &mut fa_reverse_records,
-                    reverse_compression,
+                    compression,
                     &barcode_info,
                     mismatch,
                     output,
@@ -215,13 +215,20 @@ fn main() {
         Some(utils::FileType::Fastq) => match reverse.is_empty() {
             // single-end fastq mode
             true => {
+                // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1]]);
                 }
+
+                // Get files reader and compression format
+                let (forward_reader, compression) =
+                    utils::read_file(&Path::new(forward)).expect("Cannot read input file");
                 let mut fq_forward_records = fastq::Reader::new(forward_reader).records();
+
+                // Demultiplexing
                 utils::se_fq_demux(
                     &mut fq_forward_records,
-                    forward_compression,
+                    compression,
                     &barcode_info,
                     mismatch,
                     output,
@@ -230,18 +237,25 @@ fn main() {
             }
             // paired-end fastq mode
             false => {
+                // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     barcode_info.insert(b_vec[0], vec![b_vec[1], b_vec[2]]);
                 }
+
+                // Get files readers and compression
+                let (forward_reader, compression) =
+                    utils::read_file(&Path::new(forward)).expect("Cannot read input file");
                 let mut fq_forward_records = fastq::Reader::new(forward_reader).records();
-                let (reverse_reader, reverse_compression) =
+
+                let (reverse_reader, _compression) =
                     utils::read_file(&Path::new(reverse)).expect("Cannot read input file");
                 let mut fq_reverse_records = fastq::Reader::new(reverse_reader).records();
 
+                // Demultiplexing
                 utils::pe_fq_demux(
                     &mut fq_forward_records,
                     &mut fq_reverse_records,
-                    reverse_compression,
+                    compression,
                     &barcode_info,
                     mismatch,
                     output,
@@ -258,6 +272,8 @@ fn main() {
             process::exit(exitcode::DATAERR);
         }
     }
+
+    println!("END {:?}", startime.elapsed());
 
     // Finishing
     let duration = startime.elapsed();
