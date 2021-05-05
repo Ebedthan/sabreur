@@ -1,2 +1,5 @@
 /target
 /sabreur_out
+/tests/id*
+/tests/mytmp*
+/tests/unknown*

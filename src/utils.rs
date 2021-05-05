@@ -645,6 +645,33 @@ mod tests {
     use super::*;
     use std::io::prelude::*;
 
+    // read_file tests ------------------------------------------------------
+    #[test]
+    fn test_read_file() {
+        let (mut reader, compression) = read_file(Path::new("tests/test.fa.gz")).unwrap();
+        let mut contents = String::new();
+        reader
+            .read_to_string(&mut contents)
+            .expect("Error during file reading");
+
+        assert_eq!(compression, niffler::compression::Format::Gzip);
+        assert_eq!(contents, ">seqID1 desc\nATCGATCGATCGATC\n");
+    }
+
+    #[test]
+    fn test_read_file_content_is_ok() {
+        let (reader, _compression) = read_file(Path::new("tests/test.fa.gz")).unwrap();
+        let fa_records = bio::io::fasta::Reader::new(reader).records();
+
+        for record in fa_records {
+            let record = record.unwrap();
+            assert_eq!(record.id(), "seqID1");
+            assert_eq!(record.desc(), Some("desc"));
+            assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATC");
+        }
+    }
+
+    // bc_cmp tests ---------------------------------------------------------
     #[test]
     fn test_bc_cmp_ok() {
         let seq = "ATCGATCGATCG";
@@ -677,40 +704,87 @@ mod tests {
         assert_eq!(bc_cmp(bc, seq, 0), false);
     }
 
+    // se_fa_demux tests ----------------------------------------------------
     #[test]
     fn test_se_fa_demux() {
         let p = Path::new("tests/test2.fa.gz");
         let out = "tests";
-        let (fr, cmp) = read_file(&p).expect("Cannot open");
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         bc_data.insert("ACCGTA", vec!["id1.fa"]);
         bc_data.insert("ATTGTT", vec!["id2.fa"]);
 
         assert!(se_fa_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
-
-        std::fs::remove_file("tests/id1.fa.gz").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/id2.fa.gz").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/unknown.fa.gz").expect("Cannot delete tmp file");
     }
 
+    #[test]
+    fn test_se_fa_demux_m1() {
+        let p = Path::new("tests/test2.fa.gz");
+        let out = "tests";
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
+        let mut records = fasta::Reader::new(fr).records();
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("AGCGTA", vec!["id1.fa"]);
+        bc_data.insert("ACTGTT", vec!["id2.fa"]);
+
+        assert!(se_fa_demux(&mut records, cmp, &bc_data, 1, out).is_ok());
+    }
+
+    #[test]
+    fn test_se_fa_demux_m2() {
+        let p = Path::new("tests/test2.fa.gz");
+        let out = "tests";
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
+        let mut records = fasta::Reader::new(fr).records();
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("GGCGCA", vec!["id1.fa"]);
+        bc_data.insert("GCTGCT", vec!["id2.fa"]);
+
+        assert!(se_fa_demux(&mut records, cmp, &bc_data, 2, out).is_ok());
+    }
+
+    // se_fq_demux tests ----------------------------------------------------
     #[test]
     fn test_se_fq_demux() {
         let p = Path::new("tests/test2.fq.gz");
         let out = "tests";
-        let (fr, cmp) = read_file(&p).expect("Cannot open");
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         bc_data.insert("ACCGTA", vec!["id1.fq"]);
         bc_data.insert("ATTGTT", vec!["id2.fq"]);
 
         assert!(se_fq_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
-
-        std::fs::remove_file("tests/id1.fq.gz").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/id2.fq.gz").expect("Cannot delete tmp file");
-        std::fs::remove_file("tests/unknown.fq.gz").expect("Cannot delete tmp file");
     }
 
+    #[test]
+    fn test_se_fq_demux_m1() {
+        let p = Path::new("tests/test2.fq.gz");
+        let out = "tests";
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
+        let mut records = fastq::Reader::new(fr).records();
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("AGCGTA", vec!["id1.fq"]);
+        bc_data.insert("AGTGTT", vec!["id2.fq"]);
+
+        assert!(se_fq_demux(&mut records, cmp, &bc_data, 1, out).is_ok());
+    }
+
+    #[test]
+    fn test_se_fq_demux_m2() {
+        let p = Path::new("tests/test2.fq.gz");
+        let out = "tests";
+        let (fr, cmp) = read_file(&p).expect("Cannot open file");
+        let mut records = fastq::Reader::new(fr).records();
+        let mut bc_data: Barcode = HashMap::new();
+        bc_data.insert("AGTGTA", vec!["id1.fq"]);
+        bc_data.insert("ACAGTT", vec!["id2.fq"]);
+
+        assert!(se_fq_demux(&mut records, cmp, &bc_data, 2, out).is_ok());
+    }
+
+    // write_to_fa tests ----------------------------------------------------
     #[test]
     fn test_write_to_fa_is_ok() {
         let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
@@ -725,36 +799,31 @@ mod tests {
         while let Some(Ok(rec)) = fa_records.next() {
             assert_eq!(rec.id(), "id_str");
             assert_eq!(rec.desc(), Some("desc"));
-            assert_eq!(rec.seq().to_vec(), b"ATCGCCG");
-        }
-        std::fs::remove_file("tests/mytmp.fa").expect("Cannot remove tmp file");
-    }
-
-    #[test]
-    fn test_read_file() {
-        let (mut reader, compression) = read_file(Path::new("tests/test.fa.gz")).unwrap();
-        let mut contents = String::new();
-        reader
-            .read_to_string(&mut contents)
-            .expect("Error during file reading");
-
-        assert_eq!(compression, niffler::compression::Format::Gzip);
-        assert_eq!(contents, ">seqID1 desc\nATCGATCGATCGATC\n");
-    }
-
-    #[test]
-    fn test_read_file_content_is_ok() {
-        let (reader, _compression) = read_file(Path::new("tests/test.fa.gz")).unwrap();
-        let fa_records = bio::io::fasta::Reader::new(reader).records();
-
-        for record in fa_records {
-            let record = record.unwrap();
-            assert_eq!(record.id(), "seqID1");
-            assert_eq!(record.desc(), Some("desc"));
-            assert_eq!(record.seq().to_vec(), b"ATCGATCGATCGATC");
+            assert_eq!(rec.seq(), b"ATCGCCG");
         }
     }
 
+    // write_to_fq tests ----------------------------------------------------
+    #[test]
+    fn test_write_to_fq_is_ok() {
+        let record = fastq::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG", b"QQQQQQQ");
+        let out = "tests";
+        let cmp = niffler::compression::Format::Gzip;
+        assert!((write_to_fq("mytmp.fq", cmp, out, &record)).is_ok());
+
+        let mut fa_records = fastq::Reader::from_file("tests/mytmp.fq")
+            .expect("Cannot read file.")
+            .records();
+
+        while let Some(Ok(rec)) = fa_records.next() {
+            assert_eq!(rec.id(), "id_str");
+            assert_eq!(rec.desc(), Some("desc"));
+            assert_eq!(rec.seq(), b"ATCGCCG");
+            assert_eq!(rec.qual(), b"QQQQQQQ");
+        }
+    }
+
+    // get_file_type tests -------------------------------------------------
     #[test]
     fn test_get_file_type() {
         let f1 = "myfile.fa";
@@ -770,27 +839,21 @@ mod tests {
         assert_eq!(get_file_type(f5), None);
     }
 
+    // split_by_tab tests ---------------------------------------------------
     #[test]
-    fn test_read_tsv_file() {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open("tests/mytmp.txt")
-            .unwrap();
-        if let Err(e) = writeln!(file, "Hello\tWorld\tEarth\nBrian\twas\tthere\n") {
-            eprintln!("Could not write to file: {}", e);
-        }
-        assert_eq!(0, 0);
-        std::fs::remove_file("tests/mytmp.txt").expect("Cannot delete file");
-    }
-
-    #[test]
-    fn test_split_line_by_tab() {
+    fn test_split_by_tab() {
         let mystring = "Hello\tWorld\tEarth\nBrian\twas\tthere";
         let fields = split_by_tab(mystring).unwrap();
         assert_eq!(
             fields,
             [["Hello", "World", "Earth"], ["Brian", "was", "there"]]
         );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_split_by_tab_not_ok() {
+        let mystring = "HelloWorldEarth\nBrianwasthere";
+        split_by_tab(mystring).unwrap();
     }
 }
