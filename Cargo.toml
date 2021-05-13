@@ -19,6 +19,9 @@ exitcode      = "1.1.2"
 human-panic   = "1.0.3"
 niffler       = "2.3"
 
+[dev-dependencies]
+criterion     = "0.3"
+
 [profile.release]
 opt-level       = 3
 debug           = true
@@ -26,6 +29,10 @@ overflow-checks = false
 lto             = 'thin'
 panic           = 'abort'
 incremental     = false
+
+[[bench]]
+name = "my_benchmark"
+harness = false
 
 [[bin]]
 name = "sabreur"
