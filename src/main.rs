@@ -21,7 +21,7 @@ use human_panic::setup_panic;
 
 mod utils;
 
-const VERSION: &str = "0.1.1";
+const VERSION: &str = "0.1.2";
 
 fn main() {
     setup_panic!();
@@ -97,19 +97,14 @@ fn main() {
     let force = matches.is_present("force");
     let quiet = matches.is_present("quiet");
 
-    let stdout = io::stdout();
-    let stderr = io::stderr();
-    let mut out_handle = stdout.lock();
-    let mut err_handle = stderr.lock();
-
     if !quiet {
-        writeln!(out_handle, "[INFO] sabreur v{} starting up!", VERSION)
+        writeln!(io::stdout(), "[INFO] sabreur v{} starting up!", VERSION)
             .expect("Cannot write to stdout");
         if reverse.is_empty() {
-            writeln!(out_handle, "[INFO] You are in single-end mode")
+            writeln!(io::stdout(), "[INFO] You are in single-end mode")
                 .expect("Cannot write to stdout");
         } else {
-            writeln!(out_handle, "[INFO] You are in paired-end mode")
+            writeln!(io::stdout(), "[INFO] You are in paired-end mode")
                 .expect("Cannot write to stdout");
         }
     }
@@ -117,11 +112,11 @@ fn main() {
     // Handle output dir
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
-        writeln!(err_handle, "[ERROR] Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
+        writeln!(io::stderr(), "[ERROR] Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
         process::exit(exitcode::CANTCREAT);
     } else if output_exists && force {
         if !quiet {
-            writeln!(out_handle, "[INFO] Reusing directory {}", output)
+            writeln!(io::stdout(), "[INFO] Reusing directory {}", output)
                 .expect("Cannot write to stdout");
         }
         fs::remove_dir_all(Path::new(output))
@@ -139,7 +134,7 @@ fn main() {
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
         writeln!(
-            err_handle,
+            io::stderr(),
             "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq"
         )
         .expect("Cannot write to stderr");
@@ -154,7 +149,7 @@ fn main() {
 
     if mismatch != 0 && !quiet {
         writeln!(
-            out_handle,
+            io::stdout(),
             "[WARN] You allowed {} mismatch in your barcode sequence",
             mismatch
         )
@@ -178,7 +173,7 @@ fn main() {
                     fasta::Reader::new(forward_reader).records();
 
                 // Demultiplexing
-                utils::se_fa_demux(
+                let stats = utils::se_fa_demux(
                     &mut fa_forward_records,
                     compression,
                     &barcode_info,
@@ -186,6 +181,17 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demutiplex file");
+
+                if !quiet {
+                    for (key, value) in stats.iter() {
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {} contains {} records",
+                            key, value
+                        )
+                        .expect("Cannot write to stdout");
+                    }
+                }
             }
             // paired-end fasta mode
             false => {
@@ -210,7 +216,7 @@ fn main() {
                     fasta::Reader::new(reverse_reader).records();
 
                 // Demultiplexing
-                utils::pe_fa_demux(
+                let stats = utils::pe_fa_demux(
                     &mut fa_forward_records,
                     &mut fa_reverse_records,
                     compression,
@@ -219,6 +225,17 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
+
+                if !quiet {
+                    for (key, value) in stats.iter() {
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {} contains {} records",
+                            key, value
+                        )
+                        .expect("Cannot write to stdout");
+                    }
+                }
             }
         },
         Some(utils::FileType::Fastq) => match reverse.is_empty() {
@@ -236,7 +253,7 @@ fn main() {
                     fastq::Reader::new(forward_reader).records();
 
                 // Demultiplexing
-                utils::se_fq_demux(
+                let stats = utils::se_fq_demux(
                     &mut fq_forward_records,
                     compression,
                     &barcode_info,
@@ -244,6 +261,17 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
+
+                if !quiet {
+                    for (key, value) in stats.iter() {
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {} contains {} records",
+                            key, value
+                        )
+                        .expect("Cannot write to stdout");
+                    }
+                }
             }
             // paired-end fastq mode
             false => {
@@ -267,7 +295,7 @@ fn main() {
                 let mut fq_reverse_records =
                     fastq::Reader::new(reverse_reader).records();
                 // Demultiplexing
-                utils::pe_fq_demux(
+                let stats = utils::pe_fq_demux(
                     &mut fq_forward_records,
                     &mut fq_reverse_records,
                     compression,
@@ -276,11 +304,22 @@ fn main() {
                     output,
                 )
                 .expect("Cannot demultiplex file");
+
+                if !quiet {
+                    for (key, value) in stats.iter() {
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {} contains {} records",
+                            key, value
+                        )
+                        .expect("Cannot write to stdout");
+                    }
+                }
             }
         },
         None => {
             writeln!(
-                err_handle,
+                io::stderr(),
                 "[ERROR] One of the provided file is not fasta nor fastq"
             )
             .expect("Cannot write to stderr");
@@ -288,22 +327,24 @@ fn main() {
         }
     }
 
-    // Finishing
-    let duration = startime.elapsed();
-    let seconds = duration.as_secs() % 60;
-    let minutes = (duration.as_secs() / 60) % 60;
-    let hours = (duration.as_secs() / 60) / 60;
+    if !quiet {
+        // Finishing
+        let duration = startime.elapsed();
+        let seconds = duration.as_secs() % 60;
+        let minutes = (duration.as_secs() / 60) % 60;
+        let hours = (duration.as_secs() / 60) / 60;
 
-    writeln!(out_handle, "[INFO] Results are available in {}", output)
+        writeln!(io::stdout(), "[INFO] Results are available in {}", output)
+            .expect("Cannot write to stdout");
+        writeln!(
+            io::stdout(),
+            "[INFO] Walltime: {}h:{}m:{}s",
+            hours, minutes, seconds
+        )
         .expect("Cannot write to stdout");
-    writeln!(
-        out_handle,
-        "[INFO] Walltime: {}h:{}m:{}s",
-        hours, minutes, seconds
-    )
-    .expect("Cannot write to stdout");
-    writeln!(out_handle, "Thanks. Share. Come again!")
-        .expect("Cannot write to stdout");
+        writeln!(io::stdout(), "Thanks. Share. Come again!")
+            .expect("Cannot write to stdout");
+    }
 
     process::exit(exitcode::OK);
 }

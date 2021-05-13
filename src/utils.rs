@@ -227,13 +227,15 @@ pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
 /// ```
 ///
 ///
-pub fn se_fa_demux(
-    forward_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
+pub fn se_fa_demux<'a>(
+    forward_records: &'a mut fasta::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
     compression: niffler::compression::Format,
-    barcode_data: &Barcode,
+    barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &str,
-) -> Result<()> {
+    out: &'a str,
+) -> Result<BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -278,7 +280,7 @@ pub fn se_fa_demux(
         }
     }
 
-    Ok(())
+    Ok(nb_records)
 }
 
 // se_fq_demux function -----------------------------------------------------
@@ -300,13 +302,15 @@ pub fn se_fa_demux(
 /// ```
 ///
 ///
-pub fn se_fq_demux(
-    forward_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
+pub fn se_fq_demux<'a>(
+    forward_records: &'a mut fastq::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
     compression: niffler::compression::Format,
-    barcode_data: &Barcode,
+    barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &str,
-) -> Result<()> {
+    out: &'a str,
+) -> Result<BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -351,7 +355,7 @@ pub fn se_fq_demux(
         }
     }
 
-    Ok(())
+    Ok(nb_records)
 }
 
 // pe_fa_demux function -----------------------------------------------------
@@ -360,14 +364,18 @@ pub fn se_fq_demux(
 ///
 ///
 ///
-pub fn pe_fa_demux(
-    forward_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
-    reverse_records: &mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
+pub fn pe_fa_demux<'a>(
+    forward_records: &'a mut fasta::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
+    reverse_records: &'a mut fasta::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
     compression: niffler::compression::Format,
-    barcode_data: &Barcode,
+    barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &str,
-) -> Result<()> {
+    out: &'a str,
+) -> Result<BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -445,12 +453,7 @@ pub fn pe_fa_demux(
         }
     }
 
-    for (key, value) in nb_records.iter() {
-        writeln!(io::stdout(), "[INFO] {} contains {} records", key, value)
-            .expect("Cannot write to stdout");
-    }
-
-    Ok(())
+    Ok(nb_records)
 }
 
 // pe_fq_demux function -----------------------------------------------------
@@ -459,14 +462,18 @@ pub fn pe_fa_demux(
 ///
 ///
 ///
-pub fn pe_fq_demux(
-    forward_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
-    reverse_records: &mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
+pub fn pe_fq_demux<'a>(
+    forward_records: &'a mut fastq::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
+    reverse_records: &'a mut fastq::Records<
+        std::boxed::Box<dyn std::io::Read>,
+    >,
     compression: niffler::compression::Format,
-    barcode_data: &Barcode,
+    barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &str,
-) -> Result<()> {
+    out: &'a str,
+) -> Result<BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -544,12 +551,7 @@ pub fn pe_fq_demux(
         }
     }
 
-    for (key, value) in nb_records.iter() {
-        writeln!(io::stdout(), "[INFO] {} contains {} records", key, value)
-            .expect("Cannot write to stdout");
-    }
-
-    Ok(())
+    Ok(nb_records)
 }
 
 // Tests --------------------------------------------------------------------
