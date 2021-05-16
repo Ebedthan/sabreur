@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -210,8 +210,8 @@ pub fn se_fa_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-    nb_records: &'a mut BTreeMap<&'a str, i32>,
-) -> Result<&'a mut BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut HashMap<&'a [u8], i32>,
+) -> Result<&'a mut HashMap<&'a [u8], i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -237,9 +237,7 @@ pub fn se_fa_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
@@ -249,7 +247,7 @@ pub fn se_fa_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown.fq")
+                    .entry(b"unknown.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fa(&unknown_file, compression, &f_rec)
@@ -286,8 +284,8 @@ pub fn se_fq_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-    nb_records: &'a mut BTreeMap<&'a str, i32>,
-) -> Result<&'a mut BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut HashMap<&'a [u8], i32>,
+) -> Result<&'a mut HashMap<&'a [u8], i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -313,9 +311,7 @@ pub fn se_fq_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
@@ -325,7 +321,7 @@ pub fn se_fq_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown.fq")
+                    .entry(b"unknown.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fq(&unknown_file, compression, &f_rec)
@@ -350,8 +346,8 @@ pub fn pe_fa_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-    nb_records: &'a mut BTreeMap<&'a str, i32>,
-) -> Result<&'a mut BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut HashMap<&'a [u8], i32>,
+) -> Result<&'a mut HashMap<&'a [u8], i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -385,9 +381,7 @@ pub fn pe_fa_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
@@ -397,7 +391,7 @@ pub fn pe_fa_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown_R1.fa")
+                    .entry(b"unknown_R1.fa")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fa(&unknown_file1, compression, &f_rec)
@@ -412,9 +406,7 @@ pub fn pe_fa_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
                     &barcode_data.get(i).unwrap()[1],
                     compression,
@@ -424,7 +416,7 @@ pub fn pe_fa_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown_R2.fa")
+                    .entry(b"unknown_R2.fa")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fa(&unknown_file2, compression, &r_rec)
@@ -449,8 +441,8 @@ pub fn pe_fq_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-    nb_records: &'a mut BTreeMap<&'a str, i32>,
-) -> Result<&'a mut BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut HashMap<&'a [u8], i32>,
+) -> Result<&'a mut HashMap<&'a [u8], i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -484,9 +476,7 @@ pub fn pe_fq_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
@@ -496,7 +486,7 @@ pub fn pe_fq_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown_R1.fq")
+                    .entry(b"unknown_R1.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fq(&unknown_file1, compression, &f_rec)
@@ -511,9 +501,7 @@ pub fn pe_fq_demux<'a>(
 
         match res {
             Some(i) => {
-                let val = std::str::from_utf8(i)
-                    .expect("Supplied barcode is not in utf-8");
-                nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
+                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
                     &barcode_data.get(i).unwrap()[1],
                     compression,
@@ -523,7 +511,7 @@ pub fn pe_fq_demux<'a>(
             }
             None => {
                 nb_records
-                    .entry("unknown_R2.fq")
+                    .entry(b"unknown_R2.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
                 write_to_fq(&unknown_file2, compression, &r_rec)
@@ -608,7 +596,7 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)
@@ -640,7 +628,7 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)
@@ -672,7 +660,7 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)
@@ -705,7 +693,7 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)
@@ -737,7 +725,7 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)
@@ -769,7 +757,7 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
             .create(true)
             .append(true)

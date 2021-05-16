@@ -8,7 +8,7 @@ extern crate clap;
 extern crate exitcode;
 extern crate human_panic;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -120,7 +120,7 @@ fn main() {
                 .expect("Cannot write to stdout");
         }
         fs::remove_dir_all(Path::new(output))
-            .expect("Cannot remove existing directory");
+            .expect("Cannot remove existing directory. Do you have permission to edit this folder?");
         fs::create_dir(Path::new(output))
             .expect("Cannot create output directory");
     } else if !output_exists {
@@ -156,7 +156,7 @@ fn main() {
         .expect("Cannot write to stdout");
     }
 
-    let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+    let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
 
     // Main processing of reads
     match forward_file_ext {
@@ -197,9 +197,9 @@ fn main() {
                     for (key, value) in stats.iter() {
                         writeln!(
                             io::stdout(),
-                            "[INFO] {} found for {} barcode",
+                            "[INFO] {} records found for {} barcode",
                             value,
-                            key
+                            String::from_utf8_lossy(key)
                         )
                         .expect("Cannot write to stdout");
                     }
@@ -256,9 +256,9 @@ fn main() {
                     for (key, value) in stats.iter() {
                         writeln!(
                             io::stdout(),
-                            "[INFO] {} found for {} barcode",
+                            "[INFO] {} records found for {} barcode",
                             value,
-                            key
+                            String::from_utf8_lossy(key)
                         )
                         .expect("Cannot write to stdout");
                     }
@@ -302,9 +302,9 @@ fn main() {
                     for (key, value) in stats.iter() {
                         writeln!(
                             io::stdout(),
-                            "[INFO] {} found for {} barcode",
+                            "[INFO] {} records found for {} barcode",
                             value,
-                            key
+                            String::from_utf8_lossy(key)
                         )
                         .expect("Cannot write to stdout");
                     }
@@ -360,9 +360,9 @@ fn main() {
                     for (key, value) in stats.iter() {
                         writeln!(
                             io::stdout(),
-                            "[INFO] {} found for {} barcode",
+                            "[INFO] {} records found for {} barcode",
                             value,
-                            key
+                            String::from_utf8_lossy(key)
                         )
                         .expect("Cannot write to stdout");
                     }
@@ -396,7 +396,7 @@ fn main() {
             seconds
         )
         .expect("Cannot write to stdout");
-        writeln!(io::stdout(), "Thanks. Share. Come again!")
+        writeln!(io::stdout(), "[INFO] Thanks. Share. Come again!")
             .expect("Cannot write to stdout");
     }
 
