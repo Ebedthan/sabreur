@@ -2,14 +2,10 @@ use anyhow::Result;
 use bio::io::fasta;
 use criterion::BenchmarkId;
 use criterion::Criterion;
-use criterion::Throughput;
 use criterion::{black_box, criterion_group, criterion_main};
 use std::fs::OpenOptions;
-use std::io::{self};
 
 fn bc_cmp(bc: &[u8]) -> bool {
-    //let seq = "ATCGGCATATGCGATGCAGTAGTCAGTATGCAAAAACCCGGTTGGTTCCAA";
-    //let s = &seq[..bc.len()];
     let mismatch = 0;
     let s = b"ATCG";
 
@@ -33,45 +29,35 @@ fn from_elem(c: &mut Criterion) {
     );
 }
 
-fn write_to_fa<'a>(buffer: usize) -> Result<()> {
-    let record =
-        fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-    let compression = niffler::compression::Format::Gzip;
-    let filename = "./myfile.fa";
-    let file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(filename)?;
-
-    let raw_out = Box::new(io::BufWriter::with_capacity(buffer, file));
-
+fn write_to_fa<'a>(file: &'a std::fs::File) -> Result<()> {
+    let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
+    let cmp = niffler::compression::Format::Gzip;
     let handle = niffler::get_writer(
-        raw_out,
-        compression,
+        Box::new(file),
+        cmp,
         niffler::compression::Level::One,
     )?;
 
     let mut writer = fasta::Writer::new(handle);
-    let _fin_writer = writer.write_record(&record)?;
+    let _write_res = writer.write_record(&record)?;
 
     Ok(())
 }
 
 fn from_write(c: &mut Criterion) {
-    static KB: usize = 1024;
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("tests/mytmp.fa")
+        .expect("cannot open file");
 
-    let mut group = c.benchmark_group("from_write");
-    for size in [KB, 2 * KB, 4 * KB, 8 * KB, 16 * KB].iter() {
-        group.throughput(Throughput::Bytes(*size as u64));
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            size,
-            |b, &size| {
-                b.iter(|| write_to_fa(size));
-            },
-        );
-    }
-    group.finish();
+    c.bench_with_input(
+        BenchmarkId::new("from_write", "fasta"),
+        &file,
+        |b, file| {
+            b.iter(|| write_to_fa(black_box(file)));
+        },
+    );
 }
 
 criterion_group!(benches, from_elem, from_write);

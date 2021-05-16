@@ -40,11 +40,8 @@ pub fn read_file(
         niffler::compression::Format::Gzip => Ok((reader, compression)),
         niffler::compression::Format::No => Ok((reader, compression)),
         _ => {
-            writeln!(
-                io::stderr(),
-                "[ERROR] Only gzipped files are supported"
-            )
-            .expect("Cannot write to stderr");
+            writeln!(io::stderr(), "[ERROR] Only gzipped files are supported")
+                .expect("Cannot write to stderr");
             process::exit(1);
         }
     }
@@ -102,7 +99,7 @@ pub fn split_by_tab(string: &str) -> Result<Vec<Vec<&str>>> {
 }
 
 // Barcode type -------------------------------------------------------------
-pub type Barcode<'a> = HashMap<&'a [u8], Vec<&'a str>>;
+pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 
 // write_to_fa function -----------------------------------------------------
 
@@ -118,20 +115,10 @@ pub type Barcode<'a> = HashMap<&'a [u8], Vec<&'a str>>;
 /// ```
 ///
 pub fn write_to_fa<'a>(
-    filename: &'a str,
+    file: &'a std::fs::File,
     compression: niffler::compression::Format,
-    out: &'a str,
     record: &'a fasta::Record,
 ) -> Result<()> {
-    let mut file_path = PathBuf::from("");
-    file_path.push(out);
-    file_path.push(filename);
-
-    let file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)?;
-
     let handle = niffler::get_writer(
         Box::new(file),
         compression,
@@ -157,20 +144,10 @@ pub fn write_to_fa<'a>(
 ///
 ///
 pub fn write_to_fq<'a>(
-    filename: &'a str,
+    file: &'a std::fs::File,
     compression: niffler::compression::Format,
-    out: &'a str,
     record: &'a fastq::Record,
 ) -> Result<()> {
-    let mut file_path = PathBuf::from("");
-    file_path.push(out);
-    file_path.push(filename);
-
-    let file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)?;
-
     let handle = niffler::get_writer(
         Box::new(file),
         compression,
@@ -228,14 +205,13 @@ pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
 ///
 ///
 pub fn se_fa_demux<'a>(
-    forward_records: &'a mut fasta::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
+    forward_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-) -> Result<BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut BTreeMap<&'a str, i32>,
+) -> Result<&'a mut BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -243,23 +219,30 @@ pub fn se_fa_demux<'a>(
         ext = "";
     }
 
-    let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+    let mut unk_path = PathBuf::from("");
+    unk_path.push(out);
+    unk_path.push(format!("{}{}", "unknown.fa", ext));
+    let unknown_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path)
+        .expect("Cannot create file");
+
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[0];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[0],
                     compression,
-                    out,
                     &f_rec,
                 )
                 .expect("Cannot write to output file");
@@ -269,13 +252,8 @@ pub fn se_fa_demux<'a>(
                     .entry("unknown.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fa(
-                    format!("{}{}", "unknown.fq", ext).as_str(),
-                    compression,
-                    out,
-                    &f_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fa(&unknown_file, compression, &f_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
@@ -303,14 +281,13 @@ pub fn se_fa_demux<'a>(
 ///
 ///
 pub fn se_fq_demux<'a>(
-    forward_records: &'a mut fastq::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
+    forward_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-) -> Result<BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut BTreeMap<&'a str, i32>,
+) -> Result<&'a mut BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -318,23 +295,30 @@ pub fn se_fq_demux<'a>(
         ext = "";
     }
 
-    let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+    let mut unk_path = PathBuf::from("");
+    unk_path.push(out);
+    unk_path.push(format!("{}{}", "unknown.fq", ext));
+    let unknown_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path)
+        .expect("Cannot create file");
+
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[0];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[0],
                     compression,
-                    out,
                     &f_rec,
                 )
                 .expect("Cannot write to output file");
@@ -344,13 +328,8 @@ pub fn se_fq_demux<'a>(
                     .entry("unknown.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fq(
-                    format!("{}{}", "unknown.fq", ext).as_str(),
-                    compression,
-                    out,
-                    &f_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fq(&unknown_file, compression, &f_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
@@ -365,17 +344,14 @@ pub fn se_fq_demux<'a>(
 ///
 ///
 pub fn pe_fa_demux<'a>(
-    forward_records: &'a mut fasta::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
-    reverse_records: &'a mut fasta::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
+    forward_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
+    reverse_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-) -> Result<BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut BTreeMap<&'a str, i32>,
+) -> Result<&'a mut BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -383,23 +359,38 @@ pub fn pe_fa_demux<'a>(
         ext = "";
     }
 
-    let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+    let mut unk_path1 = PathBuf::from("");
+    unk_path1.push(out);
+    unk_path1.push(format!("{}{}", "unknown_R1.fa", ext));
+    let mut unk_path2 = PathBuf::from("");
+    unk_path2.push(out);
+    unk_path2.push(format!("{}{}", "unknown_R2.fa", ext));
+    let unknown_file1 = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path1)
+        .expect("Cannot create file");
+    let unknown_file2 = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path2)
+        .expect("Cannot create file");
+
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[0];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[0],
                     compression,
-                    out,
                     &f_rec,
                 )
                 .expect("Cannot write to output file");
@@ -409,30 +400,24 @@ pub fn pe_fa_demux<'a>(
                     .entry("unknown_R1.fa")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fa(
-                    format!("{}{}", "unknown_R1.fa", ext).as_str(),
-                    compression,
-                    out,
-                    &f_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fa(&unknown_file1, compression, &f_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[1];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fa(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[1],
                     compression,
-                    out,
                     &r_rec,
                 )
                 .expect("Cannot write to output file");
@@ -442,13 +427,8 @@ pub fn pe_fa_demux<'a>(
                     .entry("unknown_R2.fa")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fa(
-                    format!("{}{}", "unknown_R2.fa", ext).as_str(),
-                    compression,
-                    out,
-                    &r_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fa(&unknown_file2, compression, &r_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
@@ -463,17 +443,14 @@ pub fn pe_fa_demux<'a>(
 ///
 ///
 pub fn pe_fq_demux<'a>(
-    forward_records: &'a mut fastq::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
-    reverse_records: &'a mut fastq::Records<
-        std::boxed::Box<dyn std::io::Read>,
-    >,
+    forward_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
+    reverse_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
     compression: niffler::compression::Format,
     barcode_data: &'a Barcode,
     mismatch: i32,
     out: &'a str,
-) -> Result<BTreeMap<&'a str, i32>> {
+    nb_records: &'a mut BTreeMap<&'a str, i32>,
+) -> Result<&'a mut BTreeMap<&'a str, i32>> {
     let mut ext = "";
     if compression == niffler::compression::Format::Gzip && ext.is_empty() {
         ext = ".gz";
@@ -481,23 +458,38 @@ pub fn pe_fq_demux<'a>(
         ext = "";
     }
 
-    let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+    let mut unk_path1 = PathBuf::from("");
+    unk_path1.push(out);
+    unk_path1.push(format!("{}{}", "unknown_R1.fq", ext));
+    let mut unk_path2 = PathBuf::from("");
+    unk_path2.push(out);
+    unk_path2.push(format!("{}{}", "unknown_R2.fq", ext));
+    let unknown_file1 = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path1)
+        .expect("Cannot create file");
+    let unknown_file2 = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(unk_path2)
+        .expect("Cannot create file");
+
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[0];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[0],
                     compression,
-                    out,
                     &f_rec,
                 )
                 .expect("Cannot write to output file");
@@ -507,30 +499,24 @@ pub fn pe_fq_demux<'a>(
                     .entry("unknown_R1.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fq(
-                    format!("{}{}", "unknown_R1.fq", ext).as_str(),
-                    compression,
-                    out,
-                    &f_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fq(&unknown_file1, compression, &f_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
         let mut iter = my_vec.iter();
-        let res =
-            iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
+        let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
         match res {
             Some(i) => {
-                let val = barcode_data.get(i).unwrap()[1];
+                let val = std::str::from_utf8(i)
+                    .expect("Supplied barcode is not in utf-8");
                 nb_records.entry(val).and_modify(|e| *e += 1).or_insert(1);
                 write_to_fq(
-                    format!("{}{}", val, ext).as_str(),
+                    &barcode_data.get(i).unwrap()[1],
                     compression,
-                    out,
                     &r_rec,
                 )
                 .expect("Cannot write to output file");
@@ -540,13 +526,8 @@ pub fn pe_fq_demux<'a>(
                     .entry("unknown_R2.fq")
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
-                write_to_fq(
-                    format!("{}{}", "unknown_R2.fq", ext).as_str(),
-                    compression,
-                    out,
-                    &r_rec,
-                )
-                .expect("Cannot write to unknown file");
+                write_to_fq(&unknown_file2, compression, &r_rec)
+                    .expect("Cannot write to unknown file");
             }
         }
     }
@@ -563,8 +544,7 @@ mod tests {
     // read_file tests ------------------------------------------------------
     #[test]
     fn test_read_file() {
-        let (mut reader, compression) =
-            read_file("tests/test.fa.gz").unwrap();
+        let (mut reader, compression) = read_file("tests/test.fa.gz").unwrap();
         let mut contents = String::new();
         reader
             .read_to_string(&mut contents)
@@ -628,10 +608,29 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"ACCGTA", vec!["id1.fa"]);
-        bc_data.insert(b"ATTGTT", vec!["id2.fa"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fa_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
+        assert!(se_fa_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            0,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     #[test]
@@ -641,10 +640,29 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"AGCGTA", vec!["id1.fa"]);
-        bc_data.insert(b"ACTGTT", vec!["id2.fa"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fa_demux(&mut records, cmp, &bc_data, 1, out).is_ok());
+        assert!(se_fa_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            1,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     #[test]
@@ -654,10 +672,29 @@ mod tests {
             read_file("tests/test2.fa.gz").expect("Cannot open file");
         let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"GGCGCA", vec!["id1.fa"]);
-        bc_data.insert(b"GCTGCT", vec!["id2.fa"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fa_demux(&mut records, cmp, &bc_data, 2, out).is_ok());
+        assert!(se_fa_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            2,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     // se_fq_demux tests ----------------------------------------------------
@@ -668,10 +705,29 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"ACCGTA", vec!["id1.fq"]);
-        bc_data.insert(b"ATTGTT", vec!["id2.fq"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fq_demux(&mut records, cmp, &bc_data, 0, out).is_ok());
+        assert!(se_fq_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            0,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     #[test]
@@ -681,10 +737,29 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"AGCGTA", vec!["id1.fq"]);
-        bc_data.insert(b"AGTGTT", vec!["id2.fq"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fq_demux(&mut records, cmp, &bc_data, 1, out).is_ok());
+        assert!(se_fq_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            1,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     #[test]
@@ -694,10 +769,29 @@ mod tests {
             read_file("tests/test2.fq.gz").expect("Cannot open file");
         let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
-        bc_data.insert(b"AGTGTA", vec!["id1.fq"]);
-        bc_data.insert(b"ACAGTT", vec!["id2.fq"]);
+        let mut nb_records: BTreeMap<&str, i32> = BTreeMap::new();
+        let file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id1.fa")
+            .expect("cannot open file");
+        let file2 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/id2.fa")
+            .expect("cannot open file");
+        bc_data.insert(b"ACCGTA", vec![file1]);
+        bc_data.insert(b"ATTGTT", vec![file2]);
 
-        assert!(se_fq_demux(&mut records, cmp, &bc_data, 2, out).is_ok());
+        assert!(se_fq_demux(
+            &mut records,
+            cmp,
+            &bc_data,
+            2,
+            out,
+            &mut nb_records
+        )
+        .is_ok());
     }
 
     // write_to_fa tests ----------------------------------------------------
@@ -705,9 +799,13 @@ mod tests {
     fn test_write_to_fa_is_ok() {
         let record =
             fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-        let out = "tests";
         let cmp = niffler::compression::Format::Gzip;
-        assert!((write_to_fa("mytmp.fa", cmp, out, &record)).is_ok());
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/mytmp.fa")
+            .expect("cannot open file");
+        assert!((write_to_fa(&file, cmp, &record)).is_ok());
 
         let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
             .expect("Cannot read file.")
@@ -729,9 +827,13 @@ mod tests {
             b"ATCGCCG",
             b"QQQQQQQ",
         );
-        let out = "tests";
         let cmp = niffler::compression::Format::Gzip;
-        assert!((write_to_fq("mytmp.fq", cmp, out, &record)).is_ok());
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/mytmp.fa")
+            .expect("cannot open file");
+        assert!((write_to_fq(&file, cmp, &record)).is_ok());
 
         let mut fa_records = fastq::Reader::from_file("tests/mytmp.fq")
             .expect("Cannot read file.")
