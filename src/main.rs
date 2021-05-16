@@ -28,7 +28,7 @@ fn main() {
 
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
-        .version("v0.1.0")
+        .version(format!("v{}", VERSION).as_str())
         .author("Anicet Ebou, anicet.ebou@gmail.com")
         .about("A barcode demultiplexing tool for fasta and fastq files")
         .arg(
