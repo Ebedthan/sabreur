@@ -849,7 +849,7 @@ mod tests {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("tests/mytmp.fa")
+            .open("tests/mytmp.fq")
             .expect("cannot open file");
         assert!((write_to_fq(&file, cmp, &record)).is_ok());
 
