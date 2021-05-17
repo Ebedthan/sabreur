@@ -193,11 +193,14 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(format!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        ).as_str());
+                        utils::msg(
+                            format!(
+                                "{} records found for {} barcode",
+                                value,
+                                String::from_utf8_lossy(key)
+                            )
+                            .as_str(),
+                        );
                     }
                 }
             }
@@ -250,11 +253,14 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(format!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        ).as_str());
+                        utils::msg(
+                            format!(
+                                "{} records found for {} barcode",
+                                value,
+                                String::from_utf8_lossy(key)
+                            )
+                            .as_str(),
+                        );
                     }
                 }
             }
@@ -294,11 +300,14 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(format!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        ).as_str());
+                        utils::msg(
+                            format!(
+                                "{} records found for {} barcode",
+                                value,
+                                String::from_utf8_lossy(key)
+                            )
+                            .as_str(),
+                        );
                     }
                 }
             }
@@ -350,11 +359,14 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(format!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        ).as_str());
+                        utils::msg(
+                            format!(
+                                "{} records found for {} barcode",
+                                value,
+                                String::from_utf8_lossy(key)
+                            )
+                            .as_str(),
+                        );
                     }
                 }
             }
@@ -373,7 +385,9 @@ fn main() {
         let hours = (duration.as_secs() / 60) / 60;
 
         utils::msg(format!("Results are available in {}", output).as_str());
-        utils::msg(format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str());
+        utils::msg(
+            format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(),
+        );
         utils::msg("Thanks. Share. Come again!");
     }
 
