@@ -23,7 +23,7 @@ use human_panic::setup_panic;
 
 mod utils;
 
-const VERSION: &str = "0.1.2";
+const VERSION: &str = "0.2.0";
 
 fn main() {
     setup_panic!();
