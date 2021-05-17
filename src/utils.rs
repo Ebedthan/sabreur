@@ -19,12 +19,28 @@ use bio::io::{fasta, fastq};
 use colored::*;
 
 // msg function
+
+/// Print given text to stdout
+/// 
+/// # Example
+/// ```rust
+/// msg("Hello World!");
+/// ```
+/// 
 pub fn msg(msg: &str) {
     writeln!(io::stdout(), "{}", format!("[INFO] {}", msg))
         .expect("Cannot write to stdout");
 }
 
 // err function
+
+/// Print given text to stderr in red
+/// 
+/// # Example
+/// ```rust
+/// err("This is an error");
+/// ```
+/// 
 pub fn err(error: &str) {
     writeln!(io::stderr(), "{}", format!("[ERROR] {}", error).red())
         .expect("Cannot write to stderr");
