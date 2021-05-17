@@ -11,10 +11,24 @@ use std::io::{self};
 use std::path::PathBuf;
 use std::process;
 
+extern crate colored;
 extern crate niffler;
 
 use anyhow::{anyhow, Result};
 use bio::io::{fasta, fastq};
+use colored::*;
+
+// msg function
+pub fn msg(msg: &str) {
+    writeln!(io::stdout(), "{}", format!("[INFO] {}", msg))
+        .expect("Cannot write to stdout");
+}
+
+// err function
+pub fn err(error: &str) {
+    writeln!(io::stderr(), "{}", format!("[ERROR] {}", error).red())
+        .expect("Cannot write to stderr");
+}
 
 // read_file function -------------------------------------------------------
 

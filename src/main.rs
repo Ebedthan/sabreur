@@ -5,6 +5,7 @@
 
 extern crate bio;
 extern crate clap;
+extern crate colored;
 extern crate exitcode;
 extern crate human_panic;
 
@@ -17,6 +18,7 @@ use std::time::Instant;
 
 use bio::io::{fasta, fastq};
 use clap::{App, Arg};
+use colored::*;
 use human_panic::setup_panic;
 
 mod utils;
@@ -98,26 +100,22 @@ fn main() {
     let quiet = matches.is_present("quiet");
 
     if !quiet {
-        writeln!(io::stdout(), "[INFO] sabreur v{} starting up!", VERSION)
-            .expect("Cannot write to stdout");
+        utils::msg(format!("sabreur v{} starting up!", VERSION).as_str());
         if reverse.is_empty() {
-            writeln!(io::stdout(), "[INFO] You are in single-end mode")
-                .expect("Cannot write to stdout");
+            utils::msg("You are in single-end mode");
         } else {
-            writeln!(io::stdout(), "[INFO] You are in paired-end mode")
-                .expect("Cannot write to stdout");
+            utils::msg("You are in paired-end mode");
         }
     }
 
     // Handle output dir
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
-        writeln!(io::stderr(), "[ERROR] Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
+        utils::err(format!("Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).as_str());
         process::exit(exitcode::CANTCREAT);
     } else if output_exists && force {
         if !quiet {
-            writeln!(io::stdout(), "[INFO] Reusing directory {}", output)
-                .expect("Cannot write to stdout");
+            utils::msg(format!("Reusing directory {}", output).as_str());
         }
         fs::remove_dir_all(Path::new(output))
             .expect("Cannot remove existing directory. Do you have permission to edit this folder?");
@@ -133,11 +131,7 @@ fn main() {
     let reverse_file_ext = utils::get_file_type(reverse);
 
     if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
-        writeln!(
-            io::stderr(),
-            "[ERROR] Mismatched type of file supplied: one is fasta while other is fastq"
-        )
-        .expect("Cannot write to stderr");
+        utils::err("Mismatched type of file supplied: one is fasta while the other is fastq");
         process::exit(exitcode::DATAERR);
     }
 
@@ -150,8 +144,12 @@ fn main() {
     if mismatch != 0 && !quiet {
         writeln!(
             io::stdout(),
-            "[WARN] You allowed {} mismatch in your barcode sequence",
-            mismatch
+            "{}",
+            format!(
+                "[WARN] You allowed {} mismatch in your barcode sequence",
+                mismatch
+            )
+            .yellow()
         )
         .expect("Cannot write to stdout");
     }
@@ -195,13 +193,11 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            io::stdout(),
-                            "[INFO] {} records found for {} barcode",
+                        utils::msg(format!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )
-                        .expect("Cannot write to stdout");
+                        ).as_str());
                     }
                 }
             }
@@ -254,13 +250,11 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            io::stdout(),
-                            "[INFO] {} records found for {} barcode",
+                        utils::msg(format!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )
-                        .expect("Cannot write to stdout");
+                        ).as_str());
                     }
                 }
             }
@@ -300,13 +294,11 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            io::stdout(),
-                            "[INFO] {} records found for {} barcode",
+                        utils::msg(format!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )
-                        .expect("Cannot write to stdout");
+                        ).as_str());
                     }
                 }
             }
@@ -358,23 +350,17 @@ fn main() {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            io::stdout(),
-                            "[INFO] {} records found for {} barcode",
+                        utils::msg(format!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )
-                        .expect("Cannot write to stdout");
+                        ).as_str());
                     }
                 }
             }
         },
         None => {
-            writeln!(
-                io::stderr(),
-                "[ERROR] One of the provided file is not fasta nor fastq"
-            )
-            .expect("Cannot write to stderr");
+            utils::err("One of the provided file is not fasta nor fastq");
             process::exit(exitcode::DATAERR);
         }
     }
@@ -386,18 +372,9 @@ fn main() {
         let minutes = (duration.as_secs() / 60) % 60;
         let hours = (duration.as_secs() / 60) / 60;
 
-        writeln!(io::stdout(), "[INFO] Results are available in {}", output)
-            .expect("Cannot write to stdout");
-        writeln!(
-            io::stdout(),
-            "[INFO] Walltime: {}h:{}m:{}s",
-            hours,
-            minutes,
-            seconds
-        )
-        .expect("Cannot write to stdout");
-        writeln!(io::stdout(), "[INFO] Thanks. Share. Come again!")
-            .expect("Cannot write to stdout");
+        utils::msg(format!("Results are available in {}", output).as_str());
+        utils::msg(format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str());
+        utils::msg("Thanks. Share. Come again!");
     }
 
     process::exit(exitcode::OK);
