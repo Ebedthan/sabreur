@@ -15,7 +15,6 @@ keywords = ["bioinformatics", "demultiplexing"]
 anyhow        = "1.0.40"
 bio           = "0.33.0"
 clap          = "~2.33"
-colored       = "2"
 exitcode      = "1.1.2"
 human-panic   = "1.0.3"
 niffler       = "2.3"
@@ -30,6 +29,10 @@ overflow-checks = false
 lto             = 'thin'
 panic           = 'abort'
 incremental     = false
+
+[[bench]]
+name = "my_benchmark"
+harness = false
 
 [[bin]]
 name = "sabreur"

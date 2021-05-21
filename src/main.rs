@@ -3,9 +3,7 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-extern crate bio;
 extern crate clap;
-extern crate colored;
 extern crate exitcode;
 extern crate human_panic;
 
@@ -16,14 +14,12 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::Instant;
 
-use bio::io::{fasta, fastq};
 use clap::{App, Arg};
-use colored::*;
 use human_panic::setup_panic;
 
 mod utils;
 
-const VERSION: &str = "0.2.0";
+const VERSION: &str = "0.3.0";
 
 fn main() {
     setup_panic!();
@@ -67,6 +63,21 @@ fn main() {
                 .default_value("sabreur_out"),
         )
         .arg(
+            Arg::with_name("format")
+                .help("Set output files compression format.")
+                .long("format")
+                .short("f")
+                .takes_value(true)
+                .possible_values(&["gz", "xz", "bz2"]),
+        )
+        .arg(
+            Arg::with_name("level")
+                .help("Set the compression level")
+                .long("level")
+                .short("l")
+                .default_value("1"),
+        )
+        .arg(
             Arg::with_name("force")
                 .help("Force reuse of output directory")
                 .long("force")
@@ -85,54 +96,78 @@ fn main() {
     let startime = Instant::now();
 
     // Read args
+    // Get filetype and compression format of input files
     let forward = matches.value_of("FORWARD").unwrap();
+    let (forward_file_type, mut forward_file_compression) =
+        utils::get_file_type(forward).unwrap();
 
     let mut reverse = "";
+
     if matches.is_present("REVERSE") {
         reverse = matches.value_of("REVERSE").unwrap();
     }
+    let (reverse_file_type, mut reverse_file_compression) =
+        utils::get_file_type(reverse).unwrap();
 
     let barcode = matches.value_of("BARCODE").unwrap();
     let output = matches.value_of("output").unwrap();
     let mis = matches.value_of("mismatch").unwrap().to_string();
     let mismatch = mis.parse::<i32>().unwrap();
+
+    // If user force output to be compressed even if input is not
+    // add option to change compression of output
+    let mut format = niffler::compression::Format::No;
+    if matches.is_present("format") {
+        format = utils::to_niffler_format(matches.value_of("format").unwrap());
+    }
+
+    // Change file compression format here for files extension
+    if format != niffler::compression::Format::No {
+        forward_file_compression = format;
+        reverse_file_compression = format;
+    }
+
+    let lv = matches.value_of("level").unwrap().to_string();
+    let raw_level = lv.parse::<i32>().unwrap();
     let force = matches.is_present("force");
     let quiet = matches.is_present("quiet");
 
     if !quiet {
-        utils::msg(format!("sabreur v{} starting up!", VERSION).as_str());
+        writeln!(
+            io::stdout(),
+            "{}",
+            format!("[INFO] sabreur v{} starting up!", VERSION).as_str()
+        )
+        .expect("Cannot write to stdout");
         if reverse.is_empty() {
-            utils::msg("You are in single-end mode");
+            writeln!(io::stdout(), "[INFO] You are in single-end mode")
+                .expect("Cannot write to stdout");
         } else {
-            utils::msg("You are in paired-end mode");
+            writeln!(io::stdout(), "[INFO] You are in paired-end mode")
+                .expect("Cannot write to stdout");
         }
+    }
+
+    // Exit if files does not have same types
+    if !reverse.is_empty() && forward_file_type != reverse_file_type {
+        writeln!(io::stderr(), "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq").expect("Cannot write to stderr");
+        process::exit(exitcode::DATAERR);
     }
 
     // Handle output dir
     let output_exists = Path::new(output).exists();
     if output_exists && !force {
-        utils::err(format!("Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).as_str());
+        writeln!(io::stderr(), "[ERROR] Specified output folder: {}, already exists!\nPlease change it using --out option or use --force to overwrite it.", output).expect("Cannot write to stderr");
         process::exit(exitcode::CANTCREAT);
     } else if output_exists && force {
         if !quiet {
-            utils::msg(format!("Reusing directory {}", output).as_str());
+            writeln!(io::stdout(), "[INFO] Reusing directory {}", output)
+                .expect("Cannot write to stdout");
         }
-        fs::remove_dir_all(Path::new(output))
-            .expect("Cannot remove existing directory. Do you have permission to edit this folder?");
-        fs::create_dir(Path::new(output))
-            .expect("Cannot create output directory");
+        fs::remove_dir_all(Path::new(output)).expect("Cannot remove directory");
+        fs::create_dir(Path::new(output)).expect("Cannot create directory");
     } else if !output_exists {
-        fs::create_dir(Path::new(output))
-            .expect("Cannot create output directory");
-    }
-
-    // Check File type: fasta or fastq
-    let forward_file_ext = utils::get_file_type(forward);
-    let reverse_file_ext = utils::get_file_type(reverse);
-
-    if !reverse.is_empty() && forward_file_ext != reverse_file_ext {
-        utils::err("Mismatched type of file supplied: one is fasta while the other is fastq");
-        process::exit(exitcode::DATAERR);
+        fs::create_dir(Path::new(output)).expect("Cannot create directory");
     }
 
     // Read data from barcode file
@@ -144,12 +179,8 @@ fn main() {
     if mismatch != 0 && !quiet {
         writeln!(
             io::stdout(),
-            "{}",
-            format!(
-                "[WARN] You allowed {} mismatch in your barcode sequence",
-                mismatch
-            )
-            .yellow()
+            "[WARN] You allowed {} mismatch in your barcode sequence",
+            mismatch
         )
         .expect("Cannot write to stdout");
     }
@@ -157,222 +188,295 @@ fn main() {
     let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
 
     // Main processing of reads
-    match forward_file_ext {
-        Some(utils::FileType::Fasta) => match reverse.is_empty() {
+    match forward_file_type {
+        utils::FileType::Fasta => match reverse.is_empty() {
             // single-end fasta mode
             true => {
+                let ext = utils::to_compression_ext(forward_file_compression);
+
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     let mut file_path = PathBuf::from("");
                     file_path.push(output);
-                    file_path.push(b_vec[1]);
+                    file_path.push(format!("{}{}", b_vec[1], ext));
+
                     let file = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path)
                         .expect("Cannot open file");
+
                     barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
                 }
 
-                // Get forward reader and compression format
-                let (forward_reader, compression) =
-                    utils::read_file(forward).expect("Cannot read input file");
-                let mut fa_forward_records =
-                    fasta::Reader::new(forward_reader).records();
+                // Create unknown file
+                let mut unk_path = PathBuf::from("");
+                unk_path.push(output);
+                unk_path.push(format!("{}{}", "unknown.fa", ext));
+
+                let unknown_file = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path)
+                    .expect("Cannot create file");
+
+                barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
                 let stats = utils::se_fa_demux(
-                    &mut fa_forward_records,
-                    compression,
+                    forward,
+                    format,
+                    utils::to_niffler_level(raw_level),
                     &barcode_info,
                     mismatch,
-                    output,
                     &mut nb_records,
                 )
                 .expect("Cannot demutiplex file");
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {}",
                             format!(
                                 "{} records found for {} barcode",
                                 value,
                                 String::from_utf8_lossy(key)
                             )
                             .as_str(),
-                        );
+                        )
+                        .expect("Cannot write to stdout");
                     }
                 }
             }
             // paired-end fasta mode
             false => {
+                let f_ext = utils::to_compression_ext(forward_file_compression);
+                let r_ext = utils::to_compression_ext(reverse_file_compression);
+
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     let mut file_path = PathBuf::from("");
                     file_path.push(output);
-                    file_path.push(b_vec[1]);
+                    file_path.push(format!("{}{}", b_vec[1], f_ext));
+
                     let mut file_path1 = PathBuf::from("");
                     file_path1.push(output);
-                    file_path1.push(b_vec[2]);
+                    file_path1.push(format!("{}{}", b_vec[2], r_ext));
+
                     let file1 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path)
                         .expect("Cannot open file");
+
                     let file2 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path1)
                         .expect("Cannot open file");
+
                     barcode_info
                         .insert(b_vec[0].as_bytes(), vec![file1, file2]);
                 }
 
-                // Get files reader and compressions format
-                let (forward_reader, compression) =
-                    utils::read_file(forward).expect("Cannot read input file");
-                let mut fa_forward_records =
-                    fasta::Reader::new(forward_reader).records();
+                // Create unknown files
+                let mut unk_path1 = PathBuf::from("");
+                unk_path1.push(output);
+                unk_path1.push(format!("{}{}", "unknown_R1.fa", f_ext));
 
-                let (reverse_reader, _compression) =
-                    utils::read_file(reverse).expect("Cannot read input file");
-                let mut fa_reverse_records =
-                    fasta::Reader::new(reverse_reader).records();
+                let mut unk_path2 = PathBuf::from("");
+                unk_path2.push(output);
+                unk_path2.push(format!("{}{}", "unknown_R2.fa", r_ext));
+
+                let unknown_file1 = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path1)
+                    .expect("Cannot create file");
+
+                let unknown_file2 = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path2)
+                    .expect("Cannot create file");
+
+                barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
                 let stats = utils::pe_fa_demux(
-                    &mut fa_forward_records,
-                    &mut fa_reverse_records,
-                    compression,
+                    forward,
+                    reverse,
+                    format,
+                    utils::to_niffler_level(raw_level),
                     &barcode_info,
                     mismatch,
-                    output,
                     &mut nb_records,
                 )
                 .expect("Cannot demultiplex file");
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {}",
                             format!(
                                 "{} records found for {} barcode",
                                 value,
                                 String::from_utf8_lossy(key)
                             )
                             .as_str(),
-                        );
+                        )
+                        .expect("Cannot write to stdout");
                     }
                 }
             }
         },
-        Some(utils::FileType::Fastq) => match reverse.is_empty() {
+        utils::FileType::Fastq => match reverse.is_empty() {
             // single-end fastq mode
             true => {
+                let ext = utils::to_compression_ext(forward_file_compression);
+
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     let mut file_path = PathBuf::from("");
                     file_path.push(output);
-                    file_path.push(b_vec[1]);
+                    file_path.push(format!("{}{}", b_vec[1], ext));
+
                     let file = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(b_vec[1])
                         .expect("Cannot open file");
+
                     barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
                 }
 
-                // Get files reader and compression format
-                let (forward_reader, compression) =
-                    utils::read_file(forward).expect("Cannot read input file");
-                let mut fq_forward_records =
-                    fastq::Reader::new(forward_reader).records();
+                // Create unknown file
+                let mut unk_path = PathBuf::from("");
+                unk_path.push(output);
+                unk_path.push(format!("{}{}", "unknown.fa", ext));
+
+                let unknown_file = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path)
+                    .expect("Cannot create file");
+
+                barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
                 let stats = utils::se_fq_demux(
-                    &mut fq_forward_records,
-                    compression,
+                    forward,
+                    format,
+                    utils::to_niffler_level(raw_level),
                     &barcode_info,
                     mismatch,
-                    output,
                     &mut nb_records,
                 )
                 .expect("Cannot demultiplex file");
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {}",
                             format!(
                                 "{} records found for {} barcode",
                                 value,
                                 String::from_utf8_lossy(key)
                             )
                             .as_str(),
-                        );
+                        )
+                        .expect("Cannot write to stdout");
                     }
                 }
             }
             // paired-end fastq mode
             false => {
+                let f_ext = utils::to_compression_ext(forward_file_compression);
+                let r_ext = utils::to_compression_ext(reverse_file_compression);
+
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
                     let mut file_path = PathBuf::from("");
                     file_path.push(output);
-                    file_path.push(b_vec[1]);
+                    file_path.push(format!("{}{}", b_vec[1], f_ext));
+
                     let mut file_path1 = PathBuf::from("");
                     file_path1.push(output);
-                    file_path1.push(b_vec[2]);
+                    file_path1.push(format!("{}{}", b_vec[2], r_ext));
+
                     let file1 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path)
                         .expect("Cannot open file");
+
                     let file2 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path1)
                         .expect("Cannot open file");
+
                     barcode_info
                         .insert(b_vec[0].as_bytes(), vec![file1, file2]);
                 }
 
-                // Get files readers and compression
-                let (forward_reader, compression) =
-                    utils::read_file(forward).expect("Cannot read input file");
-                let mut fq_forward_records =
-                    fastq::Reader::new(forward_reader).records();
+                // Create unknown files
+                let mut unk_path1 = PathBuf::from("");
+                unk_path1.push(output);
+                unk_path1.push(format!("{}{}", "unknown_R1.fq", f_ext));
 
-                let (reverse_reader, _compression) =
-                    utils::read_file(reverse).expect("Cannot read input file");
-                let mut fq_reverse_records =
-                    fastq::Reader::new(reverse_reader).records();
+                let mut unk_path2 = PathBuf::from("");
+                unk_path2.push(output);
+                unk_path2.push(format!("{}{}", "unknown_R2.fq", r_ext));
+
+                let unknown_file1 = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path1)
+                    .expect("Cannot create file");
+
+                let unknown_file2 = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(unk_path2)
+                    .expect("Cannot create file");
+
+                barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
+
                 // Demultiplexing
                 let stats = utils::pe_fq_demux(
-                    &mut fq_forward_records,
-                    &mut fq_reverse_records,
-                    compression,
+                    forward,
+                    reverse,
+                    format,
+                    utils::to_niffler_level(raw_level),
                     &barcode_info,
                     mismatch,
-                    output,
                     &mut nb_records,
                 )
                 .expect("Cannot demultiplex file");
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        utils::msg(
-                            format!(
-                                "{} records found for {} barcode",
-                                value,
-                                String::from_utf8_lossy(key)
-                            )
-                            .as_str(),
-                        );
+                        writeln!(
+                            io::stdout(),
+                            "[INFO] {} records found for {} barcode",
+                            value,
+                            String::from_utf8_lossy(key)
+                        )
+                        .expect("Cannot write to stdout");
                     }
                 }
             }
         },
-        None => {
-            utils::err("One of the provided file is not fasta nor fastq");
+        utils::FileType::None => {
+            writeln!(
+                io::stderr(),
+                "[ERROR] One of the provided file is not fasta nor fastq"
+            )
+            .expect("Cannot write to stderr");
             process::exit(exitcode::DATAERR);
         }
     }
@@ -384,11 +488,18 @@ fn main() {
         let minutes = (duration.as_secs() / 60) % 60;
         let hours = (duration.as_secs() / 60) / 60;
 
-        utils::msg(format!("Results are available in {}", output).as_str());
-        utils::msg(
-            format!("Walltime: {}h:{}m:{}s", hours, minutes, seconds).as_str(),
-        );
-        utils::msg("Thanks. Share. Come again!");
+        writeln!(io::stdout(), "[INFO] Results are available in {}", output)
+            .expect("Cannot write to stdout");
+        writeln!(
+            io::stdout(),
+            "[INFO] Walltime: {}h:{}m:{}s",
+            hours,
+            minutes,
+            seconds,
+        )
+        .expect("Cannot write to stdout");
+        writeln!(io::stdout(), "[INFO] Thanks. Share. Come again!")
+            .expect("Cannot write to stdout");
     }
 
     process::exit(exitcode::OK);

@@ -5,45 +5,67 @@
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::io::{self};
-use std::path::PathBuf;
-use std::process;
 
-extern crate colored;
 extern crate niffler;
 
 use anyhow::{anyhow, Result};
 use bio::io::{fasta, fastq};
-use colored::*;
 
-// msg function
-
-/// Print given text to stdout
-///
-/// # Example
-/// ```rust
-/// msg("Hello World!");
-/// ```
-///
-pub fn msg(msg: &str) {
-    writeln!(io::stdout(), "{}", format!("[INFO] {}", msg))
-        .expect("Cannot write to stdout");
+pub fn to_niffler_format(format: &str) -> niffler::compression::Format {
+    if format == "gz" {
+        niffler::compression::Format::Gzip
+    } else if format == "bz2" {
+        niffler::compression::Format::Bzip
+    } else if format == "xz" {
+        niffler::compression::Format::Lzma
+    } else {
+        niffler::compression::Format::No
+    }
 }
 
-// err function
+// to_compression_ext function
 
-/// Print given text to stderr in red
+/// Convert niffler compression format to a file extension
 ///
 /// # Example
 /// ```rust
-/// err("This is an error");
+/// let compression = niffler::compression::Format::Gzip;
+/// let ext = to_compression_ext(compression);
+/// assert_eq!(ext, ".gz");
 /// ```
 ///
-pub fn err(error: &str) {
-    writeln!(io::stderr(), "{}", format!("[ERROR] {}", error).red())
-        .expect("Cannot write to stderr");
+pub fn to_compression_ext(compression: niffler::compression::Format) -> String {
+    match compression {
+        niffler::compression::Format::Gzip => ".gz".to_string(),
+        niffler::compression::Format::Bzip => ".bz2".to_string(),
+        niffler::compression::Format::Lzma => ".xz".to_string(),
+        niffler::compression::Format::No => "".to_string(),
+    }
+}
+
+// to_niffler_level function
+
+/// Convert an integer to a niffler::Level
+///
+/// # Example
+/// ```rust
+/// assert_eq!(to_niffler_level(3), niffler::Level::Three);
+/// ```
+///
+pub fn to_niffler_level(int_level: i32) -> niffler::Level {
+    match int_level {
+        1 => niffler::Level::One,
+        2 => niffler::Level::Two,
+        3 => niffler::Level::Three,
+        4 => niffler::Level::Four,
+        5 => niffler::Level::Five,
+        6 => niffler::Level::Six,
+        7 => niffler::Level::Seven,
+        8 => niffler::Level::Eight,
+        9 => niffler::Level::Nine,
+        _ => niffler::Level::One,
+    }
 }
 
 // read_file function -------------------------------------------------------
@@ -60,21 +82,13 @@ pub fn err(error: &str) {
 ///
 pub fn read_file(
     filename: &str,
-) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+) -> io::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
     let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
 
     let (reader, compression) =
-        niffler::get_reader(raw_in).expect("Cannot read input fasta file");
+        niffler::get_reader(raw_in).expect("[ERROR] Cannot read input file.");
 
-    match compression {
-        niffler::compression::Format::Gzip => Ok((reader, compression)),
-        niffler::compression::Format::No => Ok((reader, compression)),
-        _ => {
-            writeln!(io::stderr(), "[ERROR] Only gzipped files are supported")
-                .expect("Cannot write to stderr");
-            process::exit(1);
-        }
-    }
+    Ok((reader, compression))
 }
 
 /// get_file_type function --------------------------------------------------
@@ -84,6 +98,7 @@ pub fn read_file(
 pub enum FileType {
     Fasta,
     Fastq,
+    None,
 }
 
 /// Get file type from filename
@@ -94,17 +109,27 @@ pub enum FileType {
 /// let file_type = get_file_type(filename);
 /// ```
 ///
-pub fn get_file_type(filename: &str) -> Option<FileType> {
-    if filename.contains(".fastq") || filename.contains(".fq") {
-        Some(FileType::Fastq)
+pub fn get_file_type(
+    filename: &str,
+) -> Result<(FileType, niffler::compression::Format)> {
+    let mut filext = FileType::None;
+
+    if filext == FileType::None && filename.contains(".fastq")
+        || filename.contains(".fq")
+    {
+        filext = FileType::Fastq;
     } else if filename.contains(".fasta")
         || filename.contains(".fa")
         || filename.contains(".fas")
     {
-        Some(FileType::Fasta)
+        filext = FileType::Fasta;
     } else {
-        None
+        filext = FileType::None;
     }
+
+    let (_reader, comp) = read_file(filename)?;
+
+    Ok((filext, comp))
 }
 
 // split_line_by_tab function -----------------------------------------------
@@ -148,12 +173,9 @@ pub fn write_to_fa<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
     record: &'a fasta::Record,
+    level: niffler::Level,
 ) -> Result<()> {
-    let handle = niffler::get_writer(
-        Box::new(file),
-        compression,
-        niffler::compression::Level::One,
-    )?;
+    let handle = niffler::get_writer(Box::new(file), compression, level)?;
 
     let mut writer = fasta::Writer::new(handle);
     let _write_res = writer.write_record(&record)?;
@@ -177,12 +199,9 @@ pub fn write_to_fq<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
     record: &'a fastq::Record,
+    level: niffler::Level,
 ) -> Result<()> {
-    let handle = niffler::get_writer(
-        Box::new(file),
-        compression,
-        niffler::compression::Level::One,
-    )?;
+    let handle = niffler::get_writer(Box::new(file), compression, level)?;
 
     let mut writer = fastq::Writer::new(handle);
     let _write_res = writer.write_record(&record)?;
@@ -235,31 +254,22 @@ pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
 ///
 ///
 pub fn se_fa_demux<'a>(
-    forward_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
-    compression: niffler::compression::Format,
+    forward: &'a str,
+    format: niffler::compression::Format,
+    level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &'a str,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let mut ext = "";
-    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-        ext = ".gz";
-    } else {
-        ext = "";
-    }
-
-    let mut unk_path = PathBuf::from("");
-    unk_path.push(out);
-    unk_path.push(format!("{}{}", "unknown.fa", ext));
-    let unknown_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path)
-        .expect("Cannot create file");
+    let (forward_reader, mut compression) = read_file(forward)?;
+    let mut forward_records = fasta::Reader::new(forward_reader).records();
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
+
+    if format != niffler::compression::Format::No {
+        compression = format;
+    }
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
@@ -272,16 +282,18 @@ pub fn se_fa_demux<'a>(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
                     &f_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown.fq")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fa(&unknown_file, compression, &f_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fa(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                    compression,
+                    &f_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -309,28 +321,19 @@ pub fn se_fa_demux<'a>(
 ///
 ///
 pub fn se_fq_demux<'a>(
-    forward_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
-    compression: niffler::compression::Format,
+    forward: &'a str,
+    format: niffler::compression::Format,
+    level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &'a str,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let mut ext = "";
-    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-        ext = ".gz";
-    } else {
-        ext = "";
-    }
+    let (forward_reader, mut compression) = read_file(forward)?;
+    let mut forward_records = fastq::Reader::new(forward_reader).records();
 
-    let mut unk_path = PathBuf::from("");
-    unk_path.push(out);
-    unk_path.push(format!("{}{}", "unknown.fq", ext));
-    let unknown_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path)
-        .expect("Cannot create file");
+    if format != niffler::compression::Format::No {
+        compression = format;
+    }
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
@@ -346,16 +349,18 @@ pub fn se_fq_demux<'a>(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
                     &f_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown.fq")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fq(&unknown_file, compression, &f_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fq(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                    compression,
+                    &f_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -370,37 +375,23 @@ pub fn se_fq_demux<'a>(
 ///
 ///
 pub fn pe_fa_demux<'a>(
-    forward_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
-    reverse_records: &'a mut fasta::Records<std::boxed::Box<dyn std::io::Read>>,
-    compression: niffler::compression::Format,
+    forward: &'a str,
+    reverse: &'a str,
+    format: niffler::compression::Format,
+    level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &'a str,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let mut ext = "";
-    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-        ext = ".gz";
-    } else {
-        ext = "";
-    }
+    let (forward_reader, mut compression) = read_file(forward)?;
+    let mut forward_records = fasta::Reader::new(forward_reader).records();
 
-    let mut unk_path1 = PathBuf::from("");
-    unk_path1.push(out);
-    unk_path1.push(format!("{}{}", "unknown_R1.fa", ext));
-    let mut unk_path2 = PathBuf::from("");
-    unk_path2.push(out);
-    unk_path2.push(format!("{}{}", "unknown_R2.fa", ext));
-    let unknown_file1 = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path1)
-        .expect("Cannot create file");
-    let unknown_file2 = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path2)
-        .expect("Cannot create file");
+    let (reverse_reader, _compression) = read_file(reverse)?;
+    let mut reverse_records = fasta::Reader::new(reverse_reader).records();
+
+    if format != niffler::compression::Format::No {
+        compression = format;
+    }
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
@@ -416,16 +407,18 @@ pub fn pe_fa_demux<'a>(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
                     &f_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown_R1.fa")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fa(&unknown_file1, compression, &f_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fa(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                    compression,
+                    &f_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -441,16 +434,18 @@ pub fn pe_fa_demux<'a>(
                     &barcode_data.get(i).unwrap()[1],
                     compression,
                     &r_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown_R2.fa")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fa(&unknown_file2, compression, &r_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fa(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
+                    compression,
+                    &r_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -465,37 +460,23 @@ pub fn pe_fa_demux<'a>(
 ///
 ///
 pub fn pe_fq_demux<'a>(
-    forward_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
-    reverse_records: &'a mut fastq::Records<std::boxed::Box<dyn std::io::Read>>,
-    compression: niffler::compression::Format,
+    forward: &'a str,
+    reverse: &'a str,
+    format: niffler::compression::Format,
+    level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
-    out: &'a str,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let mut ext = "";
-    if compression == niffler::compression::Format::Gzip && ext.is_empty() {
-        ext = ".gz";
-    } else {
-        ext = "";
-    }
+    let (forward_reader, mut compression) = read_file(forward)?;
+    let mut forward_records = fastq::Reader::new(forward_reader).records();
 
-    let mut unk_path1 = PathBuf::from("");
-    unk_path1.push(out);
-    unk_path1.push(format!("{}{}", "unknown_R1.fq", ext));
-    let mut unk_path2 = PathBuf::from("");
-    unk_path2.push(out);
-    unk_path2.push(format!("{}{}", "unknown_R2.fq", ext));
-    let unknown_file1 = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path1)
-        .expect("Cannot create file");
-    let unknown_file2 = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(unk_path2)
-        .expect("Cannot create file");
+    let (reverse_reader, _compression) = read_file(reverse)?;
+    let mut reverse_records = fastq::Reader::new(reverse_reader).records();
+
+    if format != niffler::compression::Format::No {
+        compression = format;
+    }
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
@@ -511,16 +492,18 @@ pub fn pe_fq_demux<'a>(
                     &barcode_data.get(i).unwrap()[0],
                     compression,
                     &f_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown_R1.fq")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fq(&unknown_file1, compression, &f_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fq(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                    compression,
+                    &f_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -536,16 +519,18 @@ pub fn pe_fq_demux<'a>(
                     &barcode_data.get(i).unwrap()[1],
                     compression,
                     &r_rec,
+                    level,
                 )
                 .expect("Cannot write to output file");
             }
             None => {
-                nb_records
-                    .entry(b"unknown_R2.fq")
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
-                write_to_fq(&unknown_file2, compression, &r_rec)
-                    .expect("Cannot write to unknown file");
+                write_to_fq(
+                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
+                    compression,
+                    &r_rec,
+                    level,
+                )
+                .expect("Cannot write to unknown file");
             }
         }
     }
@@ -557,6 +542,7 @@ pub fn pe_fq_demux<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::OpenOptions;
     use std::io::prelude::*;
 
     // read_file tests ------------------------------------------------------
@@ -621,10 +607,6 @@ mod tests {
     // se_fa_demux tests ----------------------------------------------------
     #[test]
     fn test_se_fa_demux() {
-        let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fa.gz").expect("Cannot open file");
-        let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -641,11 +623,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fa_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fa.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             0,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -653,10 +635,6 @@ mod tests {
 
     #[test]
     fn test_se_fa_demux_m1() {
-        let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fa.gz").expect("Cannot open file");
-        let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -673,11 +651,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fa_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fa.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             1,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -686,9 +664,6 @@ mod tests {
     #[test]
     fn test_se_fa_demux_m2() {
         let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fa.gz").expect("Cannot open file");
-        let mut records = fasta::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -705,11 +680,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fa_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fa.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             2,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -719,9 +694,6 @@ mod tests {
     #[test]
     fn test_se_fq_demux() {
         let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fq.gz").expect("Cannot open file");
-        let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -738,11 +710,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fq_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fq.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             0,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -751,9 +723,6 @@ mod tests {
     #[test]
     fn test_se_fq_demux_m1() {
         let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fq.gz").expect("Cannot open file");
-        let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -770,11 +739,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fq_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fq.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             1,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -783,9 +752,6 @@ mod tests {
     #[test]
     fn test_se_fq_demux_m2() {
         let out = "tests";
-        let (fr, cmp) =
-            read_file("tests/test2.fq.gz").expect("Cannot open file");
-        let mut records = fastq::Reader::new(fr).records();
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -802,11 +768,11 @@ mod tests {
         bc_data.insert(b"ATTGTT", vec![file2]);
 
         assert!(se_fq_demux(
-            &mut records,
-            cmp,
+            "tests/test2.fq.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
             &bc_data,
             2,
-            out,
             &mut nb_records
         )
         .is_ok());
@@ -823,7 +789,7 @@ mod tests {
             .append(true)
             .open("tests/mytmp.fa")
             .expect("cannot open file");
-        assert!((write_to_fa(&file, cmp, &record)).is_ok());
+        assert!((write_to_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
 
         let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
             .expect("Cannot read file.")
@@ -851,7 +817,7 @@ mod tests {
             .append(true)
             .open("tests/mytmp.fq")
             .expect("cannot open file");
-        assert!((write_to_fq(&file, cmp, &record)).is_ok());
+        assert!((write_to_fq(&file, cmp, &record, niffler::Level::One)).is_ok());
 
         let mut fa_records = fastq::Reader::from_file("tests/mytmp.fq")
             .expect("Cannot read file.")
