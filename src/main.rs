@@ -75,6 +75,8 @@ fn main() {
                 .help("Set the compression level")
                 .long("level")
                 .short("l")
+                .takes_value(true)
+                .possible_values(&["1", "2", "3", "4", "5", "6", "7", "8", "9"])
                 .default_value("1"),
         )
         .arg(

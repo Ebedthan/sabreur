@@ -3,11 +3,11 @@
 ![CI](https://github.com/Ebedthan/sabreur/workflows/CI/badge.svg)
 [![CodeCov](https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/sabreur)
 
-# <img src="./img/logo-sabreur.png" width=40em alt="sabreur" /> sabreur: fast, reliable and handy demultiplexing tool for fastx files.
+# sabreur: fast, reliable and handy demultiplexing tool for fastx files.
 
 With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
 
-Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files. Input files can be gzip, bzip2 or xz compressed in input or output (Thanks to the awesome [niffler crate]()). If an uncompressed file is provided the output is by default uncompressed. But this behaviour can be changed by settingn the `--format` option to the desired compress format. The `--format` option if specified while input files are compressed changes output files to the specified compress format. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
+Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files. Input files can be gzip, bzip2 or xz compressed in input or output (Thanks to the awesome [niffler crate](https://github.com/luizirber/niffler)). If an uncompressed file is provided the output is by default uncompressed. But this behaviour can be changed by settingn the `--format` option to the desired compress format. The `--format` option if specified while input files are compressed changes output files to the specified compress format. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
 
 
 ## How to use sabreur
@@ -38,7 +38,7 @@ FLAGS:
 
 OPTIONS:
     -f, --format <format>    Set output files compression format. [possible values: gz, xz, bz2]
-    -l, --level <level>      Set the compression level [default: 1]
+    -l, --level <level>      Set the compression level [default: 1]  [possible values: 1, 2, 3, 4, 5, 6, 7, 8, 9]
     -m, --mismatch <N>       Maximum number of mismatches allowed in a barcode [default: 0]
     -o, --out <FOLDER>       Output folder [default: sabreur_out]
 
