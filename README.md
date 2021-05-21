@@ -3,11 +3,11 @@
 ![CI](https://github.com/Ebedthan/sabreur/workflows/CI/badge.svg)
 [![CodeCov](https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/sabreur)
 
-# <img src="./img/ninja.png" width=40em alt="sabreur" /> 🧬 sabreur, a fast and reliable barcode demultiplexing tool for fasta and fastq files.
+# <img src="./img/logo-sabreur.png" width=40em alt="sabreur" /> sabreur: fast, reliable and handy demultiplexing tool for fastx files.
 
 With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
 
-Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files either gzipped or not. The resulting files are compressed or not following the compression mode of input files. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
+Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files. Input files can be gzip, bzip2 or xz compressed in input or output (Thanks to the awesome [niffler crate]()). If an uncompressed file is provided the output is by default uncompressed. But this behaviour can be changed by settingn the `--format` option to the desired compress format. The `--format` option if specified while input files are compressed changes output files to the specified compress format. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
 
 
 ## How to use sabreur
@@ -19,7 +19,7 @@ sabreur barcode.txt input_R1.fq.gz input_R2.fq.gz
 
 ### Single-end mode
 ```
-sabreur barcode.txt input.fa.gz
+sabreur barcode.txt input.fa --format xz
 ```
 
 Input sequences files can be fasta or fastq, gzipped or not. Just give the sequences, sabreur know how to handle it!
@@ -37,18 +37,21 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -m, --mismatch <N>    Maximum number of mismatches allowed in barcode [default: 0]
-    -o, --out <FOLDER>    Output folder [default: sabreur_out]
+    -f, --format <format>    Set output files compression format. [possible values: gz, xz, bz2]
+    -l, --level <level>      Set the compression level [default: 1]
+    -m, --mismatch <N>       Maximum number of mismatches allowed in a barcode [default: 0]
+    -o, --out <FOLDER>       Output folder [default: sabreur_out]
 
 ARGS:
-    <BARCODE>    Input barcode file [required]
-    <FORWARD>    Input forward fasta or fastq file. Can be gzipped [required]
-    <REVERSE>    Input reverse fasta or fastq file. Can be gzipped
+    <BARCODE>    Input barcode file.
+    <FORWARD>    Input forward fasta or fastq file. Can be gz, xz or bz2 compressed.
+    <REVERSE>    Input reverse fasta or fastq file. Can be gz, xz or bz2 compressed.
 ```
 
 ## Requirements
 - [Rust](https://rust-lang.org) in stable channel
 - libgz
+- 
 
 
 ## Installation

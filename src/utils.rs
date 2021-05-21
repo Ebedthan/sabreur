@@ -619,8 +619,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fa_demux(
             "tests/test2.fa.gz",
@@ -647,8 +653,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fa_demux(
             "tests/test2.fa.gz",
@@ -663,7 +675,6 @@ mod tests {
 
     #[test]
     fn test_se_fa_demux_m2() {
-        let out = "tests";
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -676,8 +687,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fa_demux(
             "tests/test2.fa.gz",
@@ -693,7 +710,6 @@ mod tests {
     // se_fq_demux tests ----------------------------------------------------
     #[test]
     fn test_se_fq_demux() {
-        let out = "tests";
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -706,8 +722,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fq_demux(
             "tests/test2.fq.gz",
@@ -722,7 +744,6 @@ mod tests {
 
     #[test]
     fn test_se_fq_demux_m1() {
-        let out = "tests";
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -735,8 +756,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fq_demux(
             "tests/test2.fq.gz",
@@ -751,7 +778,6 @@ mod tests {
 
     #[test]
     fn test_se_fq_demux_m2() {
-        let out = "tests";
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
         let file1 = OpenOptions::new()
@@ -764,8 +790,14 @@ mod tests {
             .append(true)
             .open("tests/id2.fa")
             .expect("cannot open file");
+        let unknown_file1 = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("tests/unk1.fa")
+            .expect("cannot open file");
         bc_data.insert(b"ACCGTA", vec![file1]);
         bc_data.insert(b"ATTGTT", vec![file2]);
+        bc_data.insert(b"XXX", vec![unknown_file1]);
 
         assert!(se_fq_demux(
             "tests/test2.fq.gz",
@@ -834,17 +866,22 @@ mod tests {
     // get_file_type tests -------------------------------------------------
     #[test]
     fn test_get_file_type() {
-        let f1 = "myfile.fa";
-        let f2 = "myfile.fq";
-        let f3 = "myfile.fa.gz";
-        let f4 = "myfile.txt";
-        let f5 = "myfile.txt.xz";
+        let f1 = "tests/reads_1.fa";
+        let f3 = "tests/reads_1.fa.gz";
+        let f5 = "tests/reads_1.fa.xz";
 
-        assert_eq!(get_file_type(f1), Some(FileType::Fasta));
-        assert_eq!(get_file_type(f2), Some(FileType::Fastq));
-        assert_eq!(get_file_type(f3), Some(FileType::Fasta));
-        assert_ne!(get_file_type(f4), Some(FileType::Fastq));
-        assert_eq!(get_file_type(f5), None);
+        assert_eq!(
+            get_file_type(f1).unwrap(),
+            (FileType::Fasta, niffler::compression::Format::No)
+        );
+        assert_eq!(
+            get_file_type(f3).unwrap(),
+            (FileType::Fasta, niffler::compression::Format::Gzip)
+        );
+        assert_eq!(
+            get_file_type(f5).unwrap(),
+            (FileType::Fasta, niffler::compression::Format::Lzma)
+        );
     }
 
     // split_by_tab tests ---------------------------------------------------

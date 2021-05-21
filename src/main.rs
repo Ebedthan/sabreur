@@ -28,22 +28,22 @@ fn main() {
     let matches = App::new("sabreur")
         .version(format!("v{}", VERSION).as_str())
         .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("A barcode demultiplexing tool for fasta and fastq files")
+        .about("Fast, reliable and full-featured barcode demultiplexing tool for fastx files")
         .arg(
             Arg::with_name("BARCODE")
-                .help("Input barcode file [required]")
+                .help("Input barcode file.")
                 .required(true)
                 .index(1),
         )
         .arg(
             Arg::with_name("FORWARD")
-                .help("Input forward fasta or fastq file. Can be gzipped [required]")
+                .help("Input forward fasta or fastq file. Can be gz, xz or bz2 compressed.")
                 .required(true)
                 .index(2),
         )
         .arg(
             Arg::with_name("REVERSE")
-                .help("Input reverse fasta or fastq file. Can be gzipped")
+                .help("Input reverse fasta or fastq file. Can be gz, xz or bz2 compressed.")
                 .index(3),
         )
         .arg(
