@@ -104,12 +104,9 @@ fn main() {
         utils::get_file_type(forward).unwrap();
 
     let mut reverse = "";
-
     if matches.is_present("REVERSE") {
         reverse = matches.value_of("REVERSE").unwrap();
     }
-    let (reverse_file_type, mut reverse_file_compression) =
-        utils::get_file_type(reverse).unwrap();
 
     let barcode = matches.value_of("BARCODE").unwrap();
     let output = matches.value_of("output").unwrap();
@@ -126,7 +123,6 @@ fn main() {
     // Change file compression format here for files extension
     if format != niffler::compression::Format::No {
         forward_file_compression = format;
-        reverse_file_compression = format;
     }
 
     let lv = matches.value_of("level").unwrap().to_string();
@@ -151,7 +147,9 @@ fn main() {
     }
 
     // Exit if files does not have same types
-    if !reverse.is_empty() && forward_file_type != reverse_file_type {
+    if !reverse.is_empty()
+        && forward_file_type != (utils::get_file_type(reverse).unwrap()).0
+    {
         writeln!(io::stderr(), "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq").expect("Cannot write to stderr");
         process::exit(exitcode::DATAERR);
     }
@@ -253,6 +251,13 @@ fn main() {
             }
             // paired-end fasta mode
             false => {
+                let (_reverse_file_type, mut reverse_file_compression) =
+                    utils::get_file_type(reverse).unwrap();
+
+                if format != niffler::compression::Format::No {
+                    reverse_file_compression = format;
+                }
+
                 let f_ext = utils::to_compression_ext(forward_file_compression);
                 let r_ext = utils::to_compression_ext(reverse_file_compression);
 
@@ -348,7 +353,7 @@ fn main() {
                     let file = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(b_vec[1])
+                        .open(file_path)
                         .expect("Cannot open file");
 
                     barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
@@ -396,6 +401,13 @@ fn main() {
             }
             // paired-end fastq mode
             false => {
+                let (_reverse_file_type, mut reverse_file_compression) =
+                    utils::get_file_type(reverse).unwrap();
+
+                if format != niffler::compression::Format::No {
+                    reverse_file_compression = format;
+                }
+
                 let f_ext = utils::to_compression_ext(forward_file_compression);
                 let r_ext = utils::to_compression_ext(reverse_file_compression);
 
