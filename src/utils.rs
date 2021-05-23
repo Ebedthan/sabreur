@@ -9,18 +9,22 @@ use std::io::{self};
 
 extern crate niffler;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use bio::io::{fasta, fastq};
 
-pub fn to_niffler_format(format: &str) -> niffler::compression::Format {
+use crate::error;
+
+
+// to_niffler_format function
+pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
     if format == "gz" {
-        niffler::compression::Format::Gzip
+        Ok(niffler::compression::Format::Gzip)
     } else if format == "bz2" {
-        niffler::compression::Format::Bzip
+        Ok(niffler::compression::Format::Bzip)
     } else if format == "xz" {
-        niffler::compression::Format::Lzma
+        Ok(niffler::compression::Format::Lzma)
     } else {
-        niffler::compression::Format::No
+        Ok(niffler::compression::Format::No)
     }
 }
 
@@ -82,13 +86,16 @@ pub fn to_niffler_level(int_level: i32) -> niffler::Level {
 ///
 pub fn read_file(
     filename: &str,
-) -> io::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
-    let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
+) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+    let raw_in = Box::new(io::BufReader::new(
+        File::open(filename).with_context(|| error::Error::CantReadFile {
+            filename: filename.to_string(),
+        })?,
+    ));
 
-    let (reader, compression) =
-        niffler::get_reader(raw_in).expect("[ERROR] Cannot read input file.");
-
-    Ok((reader, compression))
+    niffler::get_reader(raw_in).with_context(|| {
+        anyhow!("Could not detect compression of file '{}'", filename)
+    })
 }
 
 /// get_file_type function --------------------------------------------------
@@ -201,10 +208,15 @@ pub fn write_to_fq<'a>(
     record: &'a fastq::Record,
     level: niffler::Level,
 ) -> Result<()> {
-    let handle = niffler::get_writer(Box::new(file), compression, level)?;
+    let handle = niffler::get_writer(Box::new(file), compression, level)
+        .with_context(|| anyhow!("Could not get file writer"))?;
 
     let mut writer = fastq::Writer::new(handle);
-    let _write_res = writer.write_record(&record)?;
+    let _write_res = writer.write_record(&record).with_context(|| {
+        error::Error::CantWriteFile {
+            filename: "output file".to_string(),
+        }
+    })?;
 
     Ok(())
 }
@@ -261,7 +273,10 @@ pub fn se_fa_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let (forward_reader, mut compression) = read_file(forward)?;
+    let (forward_reader, mut compression) =
+        read_file(forward).with_context(|| error::Error::ReadingError {
+            filename: forward.to_string(),
+        })?;
     let mut forward_records = fasta::Reader::new(forward_reader).records();
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
@@ -284,7 +299,11 @@ pub fn se_fa_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
             None => {
                 write_to_fa(
@@ -293,7 +312,11 @@ pub fn se_fa_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
         }
     }
@@ -328,7 +351,10 @@ pub fn se_fq_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let (forward_reader, mut compression) = read_file(forward)?;
+    let (forward_reader, mut compression) =
+        read_file(forward).with_context(|| error::Error::ReadingError {
+            filename: forward.to_string(),
+        })?;
     let mut forward_records = fastq::Reader::new(forward_reader).records();
 
     if format != niffler::compression::Format::No {
@@ -351,7 +377,11 @@ pub fn se_fq_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
             None => {
                 write_to_fq(
@@ -360,7 +390,11 @@ pub fn se_fq_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
         }
     }
@@ -383,10 +417,16 @@ pub fn pe_fa_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let (forward_reader, mut compression) = read_file(forward)?;
+    let (forward_reader, mut compression) =
+        read_file(forward).with_context(|| error::Error::ReadingError {
+            filename: forward.to_string(),
+        })?;
     let mut forward_records = fasta::Reader::new(forward_reader).records();
 
-    let (reverse_reader, _compression) = read_file(reverse)?;
+    let (reverse_reader, _compression) =
+        read_file(reverse).with_context(|| error::Error::ReadingError {
+            filename: reverse.to_string(),
+        })?;
     let mut reverse_records = fasta::Reader::new(reverse_reader).records();
 
     if format != niffler::compression::Format::No {
@@ -409,7 +449,11 @@ pub fn pe_fa_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
             None => {
                 write_to_fa(
@@ -418,7 +462,11 @@ pub fn pe_fa_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
         }
     }
@@ -436,7 +484,11 @@ pub fn pe_fa_demux<'a>(
                     &r_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
             None => {
                 write_to_fa(
@@ -445,7 +497,11 @@ pub fn pe_fa_demux<'a>(
                     &r_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fasta,
+                    }
+                })?;
             }
         }
     }
@@ -468,10 +524,16 @@ pub fn pe_fq_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<&'a mut HashMap<&'a [u8], i32>> {
-    let (forward_reader, mut compression) = read_file(forward)?;
+    let (forward_reader, mut compression) =
+        read_file(forward).with_context(|| error::Error::ReadingError {
+            filename: forward.to_string(),
+        })?;
     let mut forward_records = fastq::Reader::new(forward_reader).records();
 
-    let (reverse_reader, _compression) = read_file(reverse)?;
+    let (reverse_reader, _compression) =
+        read_file(reverse).with_context(|| error::Error::ReadingError {
+            filename: reverse.to_string(),
+        })?;
     let mut reverse_records = fastq::Reader::new(reverse_reader).records();
 
     if format != niffler::compression::Format::No {
@@ -494,7 +556,11 @@ pub fn pe_fq_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
             None => {
                 write_to_fq(
@@ -503,7 +569,11 @@ pub fn pe_fq_demux<'a>(
                     &f_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
         }
     }
@@ -521,7 +591,11 @@ pub fn pe_fq_demux<'a>(
                     &r_rec,
                     level,
                 )
-                .expect("Cannot write to output file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
             None => {
                 write_to_fq(
@@ -530,7 +604,11 @@ pub fn pe_fq_demux<'a>(
                     &r_rec,
                     level,
                 )
-                .expect("Cannot write to unknown file");
+                .with_context(|| {
+                    error::Error::WritingErrorNoFilename {
+                        format: FileType::Fastq,
+                    }
+                })?;
             }
         }
     }

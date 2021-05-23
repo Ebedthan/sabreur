@@ -50,8 +50,9 @@ ARGS:
 
 ## Requirements
 - [Rust](https://rust-lang.org) in stable channel
-- libgz
-- 
+- libgz for gz file support
+- liblzma for xz file support
+- libbzip2 for bzip2 file support
 
 
 ## Installation
