@@ -226,6 +226,7 @@ fn main() -> Result<()> {
                 let mut unk_path = PathBuf::from("");
                 unk_path.push(output);
                 unk_path.push(format!("{}{}", "unknown.fa", ext));
+                let future_unk_path = unk_path.clone();
 
                 let unknown_file = fs::OpenOptions::new()
                     .create(true)
@@ -235,8 +236,8 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] demultiplexing ...")?;
-                let stats = utils::se_fa_demux(
+                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
+                let (stats, is_unk_empty) = utils::se_fa_demux(
                     forward,
                     format,
                     utils::to_niffler_level(raw_level),
@@ -254,6 +255,10 @@ fn main() -> Result<()> {
                             String::from_utf8_lossy(key)
                         )?;
                     }
+                }
+
+                if is_unk_empty {
+                    fs::remove_file(future_unk_path)?;
                 }
             }
             // paired-end fasta mode
@@ -301,6 +306,9 @@ fn main() -> Result<()> {
                 unk_path2.push(output);
                 unk_path2.push(format!("{}{}", "unknown_R2.fa", r_ext));
 
+                let future_unk_path1 = unk_path1.clone();
+                let future_unk_path2 = unk_path2.clone();
+
                 let unknown_file1 = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
@@ -314,16 +322,17 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] demultiplexing ...")?;
-                let stats = utils::pe_fa_demux(
-                    forward,
-                    reverse,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
+                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
+                let (stats, is_unk_r1_empty, is_unk_r2_empty) =
+                    utils::pe_fa_demux(
+                        forward,
+                        reverse,
+                        format,
+                        utils::to_niffler_level(raw_level),
+                        &barcode_info,
+                        mismatch,
+                        &mut nb_records,
+                    )?;
 
                 if !quiet {
                     for (key, value) in stats.iter() {
@@ -334,6 +343,12 @@ fn main() -> Result<()> {
                             String::from_utf8_lossy(key)
                         )?;
                     }
+                }
+                if is_unk_r1_empty {
+                    fs::remove_file(future_unk_path1)?;
+                } 
+                if is_unk_r2_empty {
+                    fs::remove_file(future_unk_path2)?;
                 }
             }
         },
@@ -362,6 +377,8 @@ fn main() -> Result<()> {
                 unk_path.push(output);
                 unk_path.push(format!("{}{}", "unknown.fa", ext));
 
+                let future_unk_path = unk_path.clone();
+
                 let unknown_file = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
@@ -370,8 +387,8 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] demultiplexing ...")?;
-                let stats = utils::se_fq_demux(
+                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
+                let (stats, is_unk_empty) = utils::se_fq_demux(
                     forward,
                     format,
                     utils::to_niffler_level(raw_level),
@@ -389,6 +406,10 @@ fn main() -> Result<()> {
                             String::from_utf8_lossy(key)
                         )?;
                     }
+                }
+
+                if is_unk_empty {
+                    fs::remove_file(future_unk_path)?;
                 }
             }
             // paired-end fastq mode
@@ -436,6 +457,9 @@ fn main() -> Result<()> {
                 unk_path2.push(output);
                 unk_path2.push(format!("{}{}", "unknown_R2.fq", r_ext));
 
+                let future_unk_path1 = unk_path1.clone();
+                let future_unk_path2 = unk_path2.clone();
+
                 let unknown_file1 = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
@@ -449,16 +473,17 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] demultiplexing ...")?;
-                let stats = utils::pe_fq_demux(
-                    forward,
-                    reverse,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
+                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
+                let (stats, is_unk_r1_empty, is_unk_r2_empty) =
+                    utils::pe_fq_demux(
+                        forward,
+                        reverse,
+                        format,
+                        utils::to_niffler_level(raw_level),
+                        &barcode_info,
+                        mismatch,
+                        &mut nb_records,
+                    )?;
 
                 if !quiet {
                     for (key, value) in stats.iter() {
@@ -469,6 +494,12 @@ fn main() -> Result<()> {
                             String::from_utf8_lossy(key)
                         )?;
                     }
+                }
+                if is_unk_r1_empty {
+                    fs::remove_file(future_unk_path1)?;
+                } 
+                if is_unk_r2_empty {
+                    fs::remove_file(future_unk_path2)?;
                 }
             }
         },

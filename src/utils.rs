@@ -271,7 +271,7 @@ pub fn se_fa_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<&'a mut HashMap<&'a [u8], i32>> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -280,6 +280,8 @@ pub fn se_fa_demux<'a>(
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
+
+    let mut is_unk_empty = true;
 
     if format != niffler::compression::Format::No {
         compression = format;
@@ -305,6 +307,7 @@ pub fn se_fa_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_empty = false;
                 write_to_fa(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -320,7 +323,7 @@ pub fn se_fa_demux<'a>(
         }
     }
 
-    Ok(nb_records)
+    Ok((nb_records, is_unk_empty))
 }
 
 // se_fq_demux function -----------------------------------------------------
@@ -349,7 +352,7 @@ pub fn se_fq_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<&'a mut HashMap<&'a [u8], i32>> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -362,6 +365,8 @@ pub fn se_fq_demux<'a>(
 
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
+
+    let mut is_unk_empty = true;
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
@@ -383,6 +388,7 @@ pub fn se_fq_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_empty = false;
                 write_to_fq(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -398,7 +404,7 @@ pub fn se_fq_demux<'a>(
         }
     }
 
-    Ok(nb_records)
+    Ok((nb_records, is_unk_empty))
 }
 
 // pe_fa_demux function -----------------------------------------------------
@@ -415,7 +421,7 @@ pub fn pe_fa_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<&'a mut HashMap<&'a [u8], i32>> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool, bool)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -435,6 +441,9 @@ pub fn pe_fa_demux<'a>(
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
+    let mut is_unk_r1_empty = true;
+    let mut is_unk_r2_empty = true;
+
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
@@ -455,6 +464,7 @@ pub fn pe_fa_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_r1_empty = false;
                 write_to_fa(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -490,6 +500,7 @@ pub fn pe_fa_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_r2_empty = false;
                 write_to_fa(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                     compression,
@@ -505,7 +516,7 @@ pub fn pe_fa_demux<'a>(
         }
     }
 
-    Ok(nb_records)
+    Ok((nb_records, is_unk_r1_empty, is_unk_r2_empty))
 }
 
 // pe_fq_demux function -----------------------------------------------------
@@ -522,7 +533,7 @@ pub fn pe_fq_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<&'a mut HashMap<&'a [u8], i32>> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool, bool)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -542,6 +553,9 @@ pub fn pe_fq_demux<'a>(
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
+    let mut is_unk_r1_empty = true;
+    let mut is_unk_r2_empty = true;
+
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
@@ -562,6 +576,7 @@ pub fn pe_fq_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_r1_empty = false;
                 write_to_fq(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -597,6 +612,7 @@ pub fn pe_fq_demux<'a>(
                 })?;
             }
             None => {
+                is_unk_r2_empty = false;
                 write_to_fq(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                     compression,
@@ -612,7 +628,7 @@ pub fn pe_fq_demux<'a>(
         }
     }
 
-    Ok(nb_records)
+    Ok((nb_records, is_unk_r1_empty, is_unk_r2_empty))
 }
 
 // Tests --------------------------------------------------------------------
