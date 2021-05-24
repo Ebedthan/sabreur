@@ -6,3 +6,4 @@
 /tests/id*
 /tests/mytmp*
 /tests/unknown*
+.cargo

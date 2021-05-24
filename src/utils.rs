@@ -14,7 +14,6 @@ use bio::io::{fasta, fastq};
 
 use crate::error;
 
-
 // to_niffler_format function
 pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
     if format == "gz" {

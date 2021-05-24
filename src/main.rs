@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     let matches = App::new("sabreur")
         .version(format!("v{}", VERSION).as_str())
         .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("Fast, reliable and full-featured barcode demultiplexing tool for fastx files")
+        .about("Fast, reliable and handy barcode demultiplexing tool for fastx files")
         .arg(
             Arg::with_name("BARCODE")
                 .help("Input barcode file.")
@@ -104,8 +104,7 @@ fn main() -> Result<()> {
     let stderr = io::stderr();
     let mut ehandle = stderr.lock();
 
-    // Read args
-    // Get filetype and compression format of input files
+    // Read command-line arguments
     let forward = matches
         .value_of("FORWARD")
         .with_context(|| anyhow!("Could not find input forward file"))?;
@@ -170,24 +169,24 @@ fn main() -> Result<()> {
 
     // Exit if files does not have same types
     if !reverse.is_empty()
-        && forward_file_type != (utils::get_file_type(reverse).unwrap()).0
+        && forward_file_type != (utils::get_file_type(reverse)?).0
     {
         writeln!(ehandle, "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq")?;
         process::exit(exitcode::DATAERR);
     }
 
     // Handle output dir
-    let output_exists = Path::new(output).exists();
-    if output_exists && !force {
+    let outdir_exists = Path::new(output).exists();
+    if outdir_exists && !force {
         writeln!(ehandle, "[ERROR] Specified output folder '{}', already exists!\n[ERROR] Please change folder name using --out or use --force.", output)?;
         process::exit(exitcode::CANTCREAT);
-    } else if output_exists && force {
+    } else if outdir_exists && force {
         if !quiet {
             writeln!(ohandle, "[INFO] Reusing directory {}", output)?;
         }
-        fs::remove_dir_all(Path::new(output))?;
-        fs::create_dir(Path::new(output))?;
-    } else if !output_exists {
+        fs::remove_dir_all(Path::new(output)).with_context(|| anyhow!("Could not remove folder '{}'. Do you have permission to remove this folder?", output))?;
+        fs::create_dir(Path::new(output)).with_context(|| anyhow!("Could not create folder '{}'. Do you have permission to create this folder?", output))?;
+    } else if !outdir_exists {
         fs::create_dir(Path::new(output))?;
     }
 
@@ -197,11 +196,7 @@ fn main() -> Result<()> {
     let barcode_fields = utils::split_by_tab(&barcode_data).unwrap();
 
     if mismatch != 0 && !quiet {
-        writeln!(
-            ohandle,
-            "[WARN] You allowed {} mismatch in your barcode sequence",
-            mismatch
-        )?;
+        writeln!(ohandle, "[WARN] Barcode mismatch allowed: {}", mismatch)?;
     }
 
     let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
@@ -240,6 +235,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
+                writeln!(ohandle, "[INFO] demultiplexing ...")?;
                 let stats = utils::se_fa_demux(
                     forward,
                     format,
@@ -318,6 +314,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
+                writeln!(ohandle, "[INFO] demultiplexing ...")?;
                 let stats = utils::pe_fa_demux(
                     forward,
                     reverse,
@@ -373,6 +370,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
+                writeln!(ohandle, "[INFO] demultiplexing ...")?;
                 let stats = utils::se_fq_demux(
                     forward,
                     format,
@@ -451,6 +449,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
+                writeln!(ohandle, "[INFO] demultiplexing ...")?;
                 let stats = utils::pe_fq_demux(
                     forward,
                     reverse,
@@ -476,7 +475,7 @@ fn main() -> Result<()> {
         utils::FileType::None => {
             writeln!(
                 ehandle,
-                "[ERROR] One of the provided file is not fasta nor fastq"
+                "[ERROR] Supplied files are not fasta or fastq. Is there fas, fa, fasta, fq or fastq in the filename?"
             )?;
             process::exit(exitcode::DATAERR);
         }
