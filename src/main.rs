@@ -323,16 +323,15 @@ fn main() -> Result<()> {
 
                 // Demultiplexing
                 writeln!(ohandle, "[INFO] Demultiplexing ...")?;
-                let (stats, is_unk_r1_empty, is_unk_r2_empty) =
-                    utils::pe_fa_demux(
-                        forward,
-                        reverse,
-                        format,
-                        utils::to_niffler_level(raw_level),
-                        &barcode_info,
-                        mismatch,
-                        &mut nb_records,
-                    )?;
+                let (stats, unk_status) = utils::pe_fa_demux(
+                    forward,
+                    reverse,
+                    format,
+                    utils::to_niffler_level(raw_level),
+                    &barcode_info,
+                    mismatch,
+                    &mut nb_records,
+                )?;
 
                 if !quiet {
                     for (key, value) in stats.iter() {
@@ -344,11 +343,13 @@ fn main() -> Result<()> {
                         )?;
                     }
                 }
-                if is_unk_r1_empty {
+                if unk_status == *"truetrue" {
                     fs::remove_file(future_unk_path1)?;
-                } 
-                if is_unk_r2_empty {
                     fs::remove_file(future_unk_path2)?;
+                } else if unk_status == *"falsetrue" {
+                    fs::remove_file(future_unk_path2)?;
+                } else if unk_status == *"truefalse" {
+                    fs::remove_file(future_unk_path1)?;
                 }
             }
         },
@@ -474,16 +475,15 @@ fn main() -> Result<()> {
 
                 // Demultiplexing
                 writeln!(ohandle, "[INFO] Demultiplexing ...")?;
-                let (stats, is_unk_r1_empty, is_unk_r2_empty) =
-                    utils::pe_fq_demux(
-                        forward,
-                        reverse,
-                        format,
-                        utils::to_niffler_level(raw_level),
-                        &barcode_info,
-                        mismatch,
-                        &mut nb_records,
-                    )?;
+                let (stats, unk_status) = utils::pe_fq_demux(
+                    forward,
+                    reverse,
+                    format,
+                    utils::to_niffler_level(raw_level),
+                    &barcode_info,
+                    mismatch,
+                    &mut nb_records,
+                )?;
 
                 if !quiet {
                     for (key, value) in stats.iter() {
@@ -495,11 +495,13 @@ fn main() -> Result<()> {
                         )?;
                     }
                 }
-                if is_unk_r1_empty {
+                if unk_status == *"truetrue" {
                     fs::remove_file(future_unk_path1)?;
-                } 
-                if is_unk_r2_empty {
                     fs::remove_file(future_unk_path2)?;
+                } else if unk_status == *"falsetrue" {
+                    fs::remove_file(future_unk_path2)?;
+                } else if unk_status == *"truefalse" {
+                    fs::remove_file(future_unk_path1)?;
                 }
             }
         },

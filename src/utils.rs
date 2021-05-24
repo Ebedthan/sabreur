@@ -421,7 +421,7 @@ pub fn pe_fa_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool, bool)> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -441,8 +441,8 @@ pub fn pe_fa_demux<'a>(
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
-    let mut is_unk_r1_empty = true;
-    let mut is_unk_r2_empty = true;
+    let mut unk1_empty = "true";
+    let mut unk2_empty = "true";
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
@@ -464,7 +464,7 @@ pub fn pe_fa_demux<'a>(
                 })?;
             }
             None => {
-                is_unk_r1_empty = false;
+                unk1_empty = "false";
                 write_to_fa(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -500,7 +500,7 @@ pub fn pe_fa_demux<'a>(
                 })?;
             }
             None => {
-                is_unk_r2_empty = false;
+                unk2_empty = "false";
                 write_to_fa(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                     compression,
@@ -515,8 +515,8 @@ pub fn pe_fa_demux<'a>(
             }
         }
     }
-
-    Ok((nb_records, is_unk_r1_empty, is_unk_r2_empty))
+    let final_str = format!("{}{}", unk1_empty, unk2_empty);
+    Ok((nb_records, final_str))
 }
 
 // pe_fq_demux function -----------------------------------------------------
@@ -533,7 +533,7 @@ pub fn pe_fq_demux<'a>(
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool, bool)> {
+) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
@@ -553,8 +553,8 @@ pub fn pe_fq_demux<'a>(
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
     let bc_len = my_vec[0].len();
 
-    let mut is_unk_r1_empty = true;
-    let mut is_unk_r2_empty = true;
+    let mut unk1_empty = "true";
+    let mut unk2_empty = "true";
 
     while let Some(Ok(f_rec)) = forward_records.next() {
         let mut iter = my_vec.iter();
@@ -576,7 +576,7 @@ pub fn pe_fq_demux<'a>(
                 })?;
             }
             None => {
-                is_unk_r1_empty = false;
+                unk1_empty = "false";
                 write_to_fq(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                     compression,
@@ -612,7 +612,7 @@ pub fn pe_fq_demux<'a>(
                 })?;
             }
             None => {
-                is_unk_r2_empty = false;
+                unk2_empty = "false";
                 write_to_fq(
                     &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                     compression,
@@ -628,14 +628,14 @@ pub fn pe_fq_demux<'a>(
         }
     }
 
-    Ok((nb_records, is_unk_r1_empty, is_unk_r2_empty))
+    let final_str = format!("{}{}", unk1_empty, unk2_empty);
+    Ok((nb_records, final_str))
 }
 
 // Tests --------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::OpenOptions;
     use std::io::prelude::*;
 
     // read_file tests ------------------------------------------------------
@@ -702,27 +702,15 @@ mod tests {
     fn test_se_fa_demux() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fa_demux(
-            "tests/test2.fa.gz",
+            "tests/test.fa.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -736,27 +724,17 @@ mod tests {
     fn test_se_fa_demux_m1() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let reverse = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"ATTGTT", vec![reverse]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fa_demux(
-            "tests/test2.fa.gz",
+            "tests/test.fa.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -770,27 +748,17 @@ mod tests {
     fn test_se_fa_demux_m2() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let reverse = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+        
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"ATTGTT", vec![reverse]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fa_demux(
-            "tests/test2.fa.gz",
+            "tests/test.fa.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -805,27 +773,17 @@ mod tests {
     fn test_se_fq_demux() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let reverse = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"ATTGTT", vec![reverse]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fq_demux(
-            "tests/test2.fq.gz",
+            "tests/test.fq.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -839,27 +797,17 @@ mod tests {
     fn test_se_fq_demux_m1() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let reverse = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"ATTGTT", vec![reverse]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fq_demux(
-            "tests/test2.fq.gz",
+            "tests/test.fq.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -873,27 +821,17 @@ mod tests {
     fn test_se_fq_demux_m2() {
         let mut bc_data: Barcode = HashMap::new();
         let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
-        let file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id1.fa")
-            .expect("cannot open file");
-        let file2 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/id2.fa")
-            .expect("cannot open file");
-        let unknown_file1 = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/unk1.fa")
-            .expect("cannot open file");
-        bc_data.insert(b"ACCGTA", vec![file1]);
-        bc_data.insert(b"ATTGTT", vec![file2]);
-        bc_data.insert(b"XXX", vec![unknown_file1]);
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let reverse = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"ATTGTT", vec![reverse]);
+        bc_data.insert(b"XXX", vec![unknown]);
 
         assert!(se_fq_demux(
-            "tests/test2.fq.gz",
+            "tests/test.fq.gz",
             niffler::compression::Format::Gzip,
             niffler::Level::One,
             &bc_data,
@@ -909,14 +847,14 @@ mod tests {
         let record =
             fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
         let cmp = niffler::compression::Format::Gzip;
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/mytmp.fa")
-            .expect("cannot open file");
+        let file = tempfile::tempfile().expect("Cannot create temp file");
+
         assert!((write_to_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
 
-        let mut fa_records = fasta::Reader::from_file("tests/mytmp.fa")
+        let mut tmpfile = tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG").expect("Cannot write to tmp file");
+
+        let mut fa_records = fasta::Reader::from_file(tmpfile)
             .expect("Cannot read file.")
             .records();
 
@@ -937,14 +875,14 @@ mod tests {
             b"QQQQQQQ",
         );
         let cmp = niffler::compression::Format::Gzip;
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("tests/mytmp.fq")
-            .expect("cannot open file");
+        let file = tempfile::tempfile().expect("Cannot create temp file");
+
         assert!((write_to_fq(&file, cmp, &record, niffler::Level::One)).is_ok());
 
-        let mut fa_records = fastq::Reader::from_file("tests/mytmp.fq")
+        let mut tmpfile = tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG\n+\nQQQQQQQ").expect("Cannot write to tmp file");
+
+        let mut fa_records = fastq::Reader::from_file(tmpfile)
             .expect("Cannot read file.")
             .records();
 
@@ -993,5 +931,40 @@ mod tests {
     fn test_split_by_tab_not_ok() {
         let mystring = "HelloWorldEarth\nBrianwasthere";
         split_by_tab(mystring).unwrap();
+    }
+
+    #[test]
+    fn test_to_niffler_level() {
+
+        assert_eq!(to_niffler_level(1), niffler::Level::One);
+        assert_eq!(to_niffler_level(2), niffler::Level::Two);
+        assert_eq!(to_niffler_level(3), niffler::Level::Three);
+        assert_eq!(to_niffler_level(4), niffler::Level::Four);
+        assert_eq!(to_niffler_level(5), niffler::Level::Five);
+        assert_eq!(to_niffler_level(6), niffler::Level::Six);
+        assert_eq!(to_niffler_level(7), niffler::Level::Seven);
+        assert_eq!(to_niffler_level(8), niffler::Level::Eight);
+        assert_eq!(to_niffler_level(9), niffler::Level::Nine);
+
+    }
+
+    #[test]
+    fn test_to_niffler_format() {
+
+        assert_eq!(to_niffler_format("gz").unwrap(), niffler::compression::Format::Gzip);
+        assert_eq!(to_niffler_format("xz").unwrap(), niffler::compression::Format::Lzma);
+        assert_eq!(to_niffler_format("bz2").unwrap(), niffler::compression::Format::Bzip);
+        assert_eq!(to_niffler_format("txt").unwrap(), niffler::compression::Format::No);
+
+    }
+
+    #[test]
+    fn test_to_compression_ext() {
+
+        assert_eq!(to_compression_ext(niffler::compression::Format::Gzip), *".gz");
+        assert_eq!(to_compression_ext(niffler::compression::Format::Lzma), *".xz");
+        assert_eq!(to_compression_ext(niffler::compression::Format::Bzip), *".bz2");
+        assert_eq!(to_compression_ext(niffler::compression::Format::No), *"");
+
     }
 }
