@@ -81,7 +81,7 @@ We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with 
 | Tool  | Single-end run time (s)                 | Paired-end run time (s)                 |
 | :---  |                :----:                   |                :----:                   |
 |       | Uncompressed output | Compressed output | Uncompressed output | Compressed output |
-|-------------------------------------------------------------------------------------------|
+|-------|-----------------------------------------|-----------------------------------------|
 | [idemp](https://github.com/yhwu/idemp) | - | 211.571 ± 3.718 | -      | 366.247 ± 10.482  |
 | [sabre](https://github.com/najoshi/sabre) | 32.911 ± 2.411 | - | 109.470 ± 49.909 | -     |
 | **sabreur** | 10.843 ± 0.531| 93.840 ± 0.446    | 40.878 ± 13.743     | 187.533 ± 0.572   |
