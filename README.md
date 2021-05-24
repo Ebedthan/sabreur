@@ -64,7 +64,7 @@ If you already have a functional rust installation do:
 cargo install sabreur
 ```
 
-### From source
+## From source
 ```
 git clone https://github.com/Ebedthan/sabreur.git
 cd sabreur
