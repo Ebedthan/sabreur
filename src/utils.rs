@@ -752,7 +752,7 @@ mod tests {
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
         let unknown = tempfile::tempfile().expect("Cannot create temp file");
-        
+
         bc_data.insert(b"ACCGTA", vec![forward]);
         bc_data.insert(b"ATTGTT", vec![reverse]);
         bc_data.insert(b"XXX", vec![unknown]);
@@ -851,8 +851,10 @@ mod tests {
 
         assert!((write_to_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
 
-        let mut tmpfile = tempfile::NamedTempFile::new().expect("Cannot create temp file");
-        writeln!(tmpfile, ">id_str desc\nATCGCCG").expect("Cannot write to tmp file");
+        let mut tmpfile =
+            tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG")
+            .expect("Cannot write to tmp file");
 
         let mut fa_records = fasta::Reader::from_file(tmpfile)
             .expect("Cannot read file.")
@@ -879,8 +881,10 @@ mod tests {
 
         assert!((write_to_fq(&file, cmp, &record, niffler::Level::One)).is_ok());
 
-        let mut tmpfile = tempfile::NamedTempFile::new().expect("Cannot create temp file");
-        writeln!(tmpfile, ">id_str desc\nATCGCCG\n+\nQQQQQQQ").expect("Cannot write to tmp file");
+        let mut tmpfile =
+            tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG\n+\nQQQQQQQ")
+            .expect("Cannot write to tmp file");
 
         let mut fa_records = fastq::Reader::from_file(tmpfile)
             .expect("Cannot read file.")
@@ -935,7 +939,6 @@ mod tests {
 
     #[test]
     fn test_to_niffler_level() {
-
         assert_eq!(to_niffler_level(1), niffler::Level::One);
         assert_eq!(to_niffler_level(2), niffler::Level::Two);
         assert_eq!(to_niffler_level(3), niffler::Level::Three);
@@ -945,26 +948,42 @@ mod tests {
         assert_eq!(to_niffler_level(7), niffler::Level::Seven);
         assert_eq!(to_niffler_level(8), niffler::Level::Eight);
         assert_eq!(to_niffler_level(9), niffler::Level::Nine);
-
     }
 
     #[test]
     fn test_to_niffler_format() {
-
-        assert_eq!(to_niffler_format("gz").unwrap(), niffler::compression::Format::Gzip);
-        assert_eq!(to_niffler_format("xz").unwrap(), niffler::compression::Format::Lzma);
-        assert_eq!(to_niffler_format("bz2").unwrap(), niffler::compression::Format::Bzip);
-        assert_eq!(to_niffler_format("txt").unwrap(), niffler::compression::Format::No);
-
+        assert_eq!(
+            to_niffler_format("gz").unwrap(),
+            niffler::compression::Format::Gzip
+        );
+        assert_eq!(
+            to_niffler_format("xz").unwrap(),
+            niffler::compression::Format::Lzma
+        );
+        assert_eq!(
+            to_niffler_format("bz2").unwrap(),
+            niffler::compression::Format::Bzip
+        );
+        assert_eq!(
+            to_niffler_format("txt").unwrap(),
+            niffler::compression::Format::No
+        );
     }
 
     #[test]
     fn test_to_compression_ext() {
-
-        assert_eq!(to_compression_ext(niffler::compression::Format::Gzip), *".gz");
-        assert_eq!(to_compression_ext(niffler::compression::Format::Lzma), *".xz");
-        assert_eq!(to_compression_ext(niffler::compression::Format::Bzip), *".bz2");
+        assert_eq!(
+            to_compression_ext(niffler::compression::Format::Gzip),
+            *".gz"
+        );
+        assert_eq!(
+            to_compression_ext(niffler::compression::Format::Lzma),
+            *".xz"
+        );
+        assert_eq!(
+            to_compression_ext(niffler::compression::Format::Bzip),
+            *".bz2"
+        );
         assert_eq!(to_compression_ext(niffler::compression::Format::No), *"");
-
     }
 }
