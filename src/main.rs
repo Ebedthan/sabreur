@@ -6,7 +6,6 @@
 extern crate anyhow;
 extern crate clap;
 extern crate exitcode;
-extern crate human_panic;
 
 use std::collections::HashMap;
 use std::fs;
@@ -17,7 +16,6 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg};
-use human_panic::setup_panic;
 
 mod error;
 mod utils;
@@ -25,8 +23,6 @@ mod utils;
 const VERSION: &str = "0.3.0";
 
 fn main() -> Result<()> {
-    setup_panic!();
-
     // Define command-line arguments ----------------------------------------
     let matches = App::new("sabreur")
         .version(format!("v{}", VERSION).as_str())
