@@ -76,7 +76,7 @@ cargo install --path .
 
 ## Benchmark
 
-We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with this [dataset](#).
+We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with this [dataset](https://figshare.com/articles/dataset/Paired-end_fastq_files_for_demultiplexing/14701629).
 
 
 | Tool  | Single-end uncompressed output | Single-end compressed output | Paired-end uncompressed output | Paired-end compressed output |
