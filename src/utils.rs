@@ -291,35 +291,32 @@ pub fn se_fa_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fa(
-                    &barcode_data.get(i).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
-            None => {
-                is_unk_empty = false;
-                write_to_fa(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fa(
+                &barcode_data.get(i).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
+        } else {
+            is_unk_empty = false;
+            write_to_fa(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
         }
     }
 
@@ -372,35 +369,32 @@ pub fn se_fq_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fq(
-                    &barcode_data.get(i).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
-            None => {
-                is_unk_empty = false;
-                write_to_fq(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fq(
+                &barcode_data.get(i).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
+        } else {
+            is_unk_empty = false;
+            write_to_fq(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
         }
     }
 
@@ -448,35 +442,32 @@ pub fn pe_fa_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fa(
-                    &barcode_data.get(i).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
-            None => {
-                unk1_empty = "false";
-                write_to_fa(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fa(
+                &barcode_data.get(i).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
+        } else {
+            unk1_empty = "false";
+            write_to_fa(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
         }
     }
 
@@ -484,35 +475,32 @@ pub fn pe_fa_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fa(
-                    &barcode_data.get(i).unwrap()[1],
-                    compression,
-                    &r_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
-            None => {
-                unk2_empty = "false";
-                write_to_fa(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
-                    compression,
-                    &r_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fasta,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fa(
+                &barcode_data.get(i).unwrap()[1],
+                compression,
+                &r_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
+        } else {
+            unk2_empty = "false";
+            write_to_fa(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
+                compression,
+                &r_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fasta,
+                }
+            })?;
         }
     }
     let final_str = format!("{}{}", unk1_empty, unk2_empty);
@@ -560,35 +548,32 @@ pub fn pe_fq_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fq(
-                    &barcode_data.get(i).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
-            None => {
-                unk1_empty = "false";
-                write_to_fq(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                    compression,
-                    &f_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fq(
+                &barcode_data.get(i).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
+        } else {
+            unk1_empty = "false";
+            write_to_fq(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
+                compression,
+                &f_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
         }
     }
 
@@ -596,35 +581,32 @@ pub fn pe_fq_demux<'a>(
         let mut iter = my_vec.iter();
         let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
-        match res {
-            Some(i) => {
-                nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-                write_to_fq(
-                    &barcode_data.get(i).unwrap()[1],
-                    compression,
-                    &r_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
-            None => {
-                unk2_empty = "false";
-                write_to_fq(
-                    &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
-                    compression,
-                    &r_rec,
-                    level,
-                )
-                .with_context(|| {
-                    error::Error::WritingErrorNoFilename {
-                        format: FileType::Fastq,
-                    }
-                })?;
-            }
+        if let Some(i) = res {
+            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
+            write_to_fq(
+                &barcode_data.get(i).unwrap()[1],
+                compression,
+                &r_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
+        } else {
+            unk2_empty = "false";
+            write_to_fq(
+                &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
+                compression,
+                &r_rec,
+                level,
+            )
+            .with_context(|| {
+                error::Error::WritingErrorNoFilename {
+                    format: FileType::Fastq,
+                }
+            })?;
         }
     }
 

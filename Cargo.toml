@@ -31,6 +31,10 @@ lto             = 'thin'
 panic           = 'abort'
 incremental     = false
 
+[[bench]]
+name = "my_benchmark"
+harness = false
+
 [[bin]]
 name = "sabreur"
 path = "src/main.rs"
