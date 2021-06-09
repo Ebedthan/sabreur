@@ -16,14 +16,11 @@ use crate::error;
 
 // to_niffler_format function
 pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
-    if format == "gz" {
-        Ok(niffler::compression::Format::Gzip)
-    } else if format == "bz2" {
-        Ok(niffler::compression::Format::Bzip)
-    } else if format == "xz" {
-        Ok(niffler::compression::Format::Lzma)
-    } else {
-        Ok(niffler::compression::Format::No)
+    match format {
+        "gz" => Ok(niffler::compression::Format::Gzip),
+        "bz2" => Ok(niffler::compression::Format::Bzip),
+        "xz" => Ok(niffler::compression::Format::Lzma),
+        _ => Ok(niffler::compression::Format::No),
     }
 }
 
@@ -697,7 +694,29 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             0,
-            &mut nb_records
+            &mut nb_records,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn test_se_fa_demux_trim() {
+        let mut bc_data: Barcode = HashMap::new();
+        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+
+        let forward = tempfile::tempfile().expect("Cannot create temp file");
+        let unknown = tempfile::tempfile().expect("Cannot create temp file");
+
+        bc_data.insert(b"ACCGTA", vec![forward]);
+        bc_data.insert(b"XXX", vec![unknown]);
+
+        assert!(se_fa_demux(
+            "tests/test.fa.gz",
+            niffler::compression::Format::Gzip,
+            niffler::Level::One,
+            &bc_data,
+            0,
+            &mut nb_records,
         )
         .is_ok());
     }
@@ -721,7 +740,7 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             1,
-            &mut nb_records
+            &mut nb_records,
         )
         .is_ok());
     }
@@ -745,7 +764,7 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             2,
-            &mut nb_records
+            &mut nb_records,
         )
         .is_ok());
     }
@@ -770,7 +789,7 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             0,
-            &mut nb_records
+            &mut nb_records,
         )
         .is_ok());
     }
@@ -794,7 +813,7 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             1,
-            &mut nb_records
+            &mut nb_records,
         )
         .is_ok());
     }
@@ -818,7 +837,7 @@ mod tests {
             niffler::Level::One,
             &bc_data,
             2,
-            &mut nb_records
+            &mut nb_records,
         )
         .is_ok());
     }

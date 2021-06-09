@@ -20,7 +20,7 @@ use clap::{App, Arg};
 mod error;
 mod utils;
 
-const VERSION: &str = "0.3.0";
+const VERSION: &str = "0.3.2";
 
 fn main() -> Result<()> {
     // Define command-line arguments ----------------------------------------

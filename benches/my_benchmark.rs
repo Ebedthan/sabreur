@@ -67,32 +67,55 @@ fn from_write(c: &mut Criterion) {
     );
 }
 
-fn write_to_fa_sp<'a>(file: &'a std::fs::File) -> Result<()> {
-    let cmp = niffler::compression::Format::Gzip;
-    let handle = niffler::get_writer(
-        Box::new(file),
-        cmp,
-        niffler::compression::Level::One,
-    )?;
-
-    let n_rec = fasta::Record::with_attrs("id", Some("desc"), &b"ATCGATCATCGATCGATCGAGTTGGTTTTGGGGTTTGGGTTTCCCAAAATGTTGATGTGTTTGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATTTTTT"[4..]);
-
-    let mut writer = fasta::Writer::new(handle);
-    let _write_res = writer.write_record(&n_rec)?;
-
-    Ok(())
+fn to_niffler_level_match(int_level: i32) -> niffler::Level {
+    match int_level {
+        1 => niffler::Level::One,
+        2 => niffler::Level::Two,
+        3 => niffler::Level::Three,
+        4 => niffler::Level::Four,
+        5 => niffler::Level::Five,
+        6 => niffler::Level::Six,
+        7 => niffler::Level::Seven,
+        8 => niffler::Level::Eight,
+        9 => niffler::Level::Nine,
+        _ => niffler::Level::One,
+    }
 }
 
-fn from_write_sp(c: &mut Criterion) {
-    let file = tempfile::tempfile().expect("Cannot create temp file");
+fn to_niffler_level_if(int_level: i32) -> niffler::Level {
+    if int_level == 1 {
+        niffler::Level::One
+    } else if int_level == 2 {
+        niffler::Level::Two
+    } else if int_level == 3 {
+        niffler::Level::Three
+    } else if int_level == 4 {
+        niffler::Level::Four
+    } else if int_level == 5 {
+        niffler::Level::Five
+    } else if int_level == 6 {
+        niffler::Level::Six
+    } else if int_level == 7 {
+        niffler::Level::Seven
+    } else if int_level == 8 {
+        niffler::Level::Eight
+    } else if int_level == 9 {
+        niffler::Level::Nine
+    } else {
+        niffler::Level::One
+    }
+}
 
-    c.bench_with_input(
-        BenchmarkId::new("from_write_sp", "fasta"),
-        &file,
-        |b, file| {
-            b.iter(|| write_to_fa_sp(black_box(file)));
-        },
-    );
+fn from_level_match(c: &mut Criterion) {
+    c.bench_function("from_level_match", |b| {
+        b.iter(|| to_niffler_level_match(black_box(2)))
+    });
+}
+
+fn from_level_if(c: &mut Criterion) {
+    c.bench_function("from_level_match", |b| {
+        b.iter(|| to_niffler_level_if(black_box(2)))
+    });
 }
 
 criterion_group!(
@@ -100,6 +123,7 @@ criterion_group!(
     from_elem,
     from_split_seq,
     from_write,
-    from_write_sp
+    from_level_match,
+    from_level_if,
 );
 criterion_main!(benches);
