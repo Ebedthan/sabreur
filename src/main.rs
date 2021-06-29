@@ -372,7 +372,7 @@ fn main() -> Result<()> {
                 // Create unknown file
                 let mut unk_path = PathBuf::from("");
                 unk_path.push(output);
-                unk_path.push(format!("{}{}", "unknown.fa", ext));
+                unk_path.push(format!("{}{}", "unknown.fq", ext));
 
                 let future_unk_path = unk_path.clone();
 
