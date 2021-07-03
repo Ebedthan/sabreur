@@ -8,6 +8,7 @@ extern crate clap;
 extern crate exitcode;
 
 use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -15,83 +16,14 @@ use std::process;
 use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
-use clap::{App, Arg};
 
+mod app;
 mod error;
 mod utils;
 
-const VERSION: &str = "0.3.2";
-
 fn main() -> Result<()> {
     // Define command-line arguments ----------------------------------------
-    let matches = App::new("sabreur")
-        .version(format!("v{}", VERSION).as_str())
-        .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("Fast, reliable and handy barcode demultiplexing tool for fastx files")
-        .arg(
-            Arg::with_name("BARCODE")
-                .help("Input barcode file.")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("FORWARD")
-                .help("Input forward fasta or fastq file. Can be gz, xz or bz2 compressed.")
-                .required(true)
-                .index(2),
-        )
-        .arg(
-            Arg::with_name("REVERSE")
-                .help("Input reverse fasta or fastq file. Can be gz, xz or bz2 compressed.")
-                .index(3),
-        )
-        .arg(
-            Arg::with_name("mismatch")
-                .help("Maximum number of mismatches allowed in a barcode")
-                .short("m")
-                .long("mismatch")
-                .value_name("N")
-                .default_value("0"),
-        )
-        .arg(
-            Arg::with_name("output")
-                .help("Output folder")
-                .short("o")
-                .long("out")
-                .value_name("FOLDER")
-                .default_value("sabreur_out"),
-        )
-        .arg(
-            Arg::with_name("format")
-                .help("Set output files compression format.")
-                .long("format")
-                .short("f")
-                .takes_value(true)
-                .possible_values(&["gz", "xz", "bz2"]),
-        )
-        .arg(
-            Arg::with_name("level")
-                .help("Set the compression level")
-                .long("level")
-                .short("l")
-                .takes_value(true)
-                .possible_values(&["1", "2", "3", "4", "5", "6", "7", "8", "9"])
-                .default_value("1"),
-        )
-        .arg(
-            Arg::with_name("force")
-                .help("Force reuse of output directory")
-                .long("force")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("quiet")
-                .help("Decrease program verbosity")
-                .short("q")
-                .long("quiet")
-                .takes_value(false),
-        )
-        .get_matches();
+    let matches = app::build_app().get_matches_from(env::args_os());
 
     // START ----------------------------------------------------------------
     let startime = Instant::now();
@@ -143,7 +75,7 @@ fn main() -> Result<()> {
     let quiet = matches.is_present("quiet");
 
     if !quiet {
-        writeln!(ohandle, "[INFO] sabreur v{} starting up!", VERSION)?;
+        writeln!(ohandle, "[INFO] sabreur starting up!")?;
         if reverse.is_empty() {
             writeln!(ohandle, "[INFO] You are in single-end mode")?;
         } else {
