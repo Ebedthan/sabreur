@@ -88,7 +88,7 @@ We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with 
  
 
 ## Note
-Sabreur use colored output in help, nevertheless sabreur honors `[NO_COLORS](https://no-color.org/)` environment variable.
+Sabreur use colored output in help, nevertheless sabreur honors [NO_COLORS](https://no-color.org/) environment variable.
 
 
 Sabreur use a special barcode tab-delimited file format in the form:
