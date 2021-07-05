@@ -16,17 +16,21 @@ use std::process;
 use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
+use clap::crate_version;
 
 mod app;
 mod error;
 mod utils;
 
+// TODO: Check if supplied barcode file for se or pe is properly
+// formated before giving it to the demultiplexing function
 fn main() -> Result<()> {
+    let startime = Instant::now();
+
     // Define command-line arguments ----------------------------------------
     let matches = app::build_app().get_matches_from(env::args_os());
 
     // START ----------------------------------------------------------------
-    let startime = Instant::now();
     let stdout = io::stdout();
     let mut ohandle = stdout.lock();
     let stderr = io::stderr();
@@ -74,8 +78,16 @@ fn main() -> Result<()> {
     let force = matches.is_present("force");
     let quiet = matches.is_present("quiet");
 
+    // Exit if files does not have same types
+    if !reverse.is_empty()
+        && forward_file_type != (utils::get_file_type(reverse)?).0
+    {
+        writeln!(ehandle, "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq")?;
+        process::exit(exitcode::DATAERR);
+    }
+
     if !quiet {
-        writeln!(ohandle, "[INFO] sabreur starting up!")?;
+        writeln!(ohandle, "[INFO] sabreur v{} starting up!", crate_version!())?;
         if reverse.is_empty() {
             writeln!(ohandle, "[INFO] You are in single-end mode")?;
         } else {
@@ -93,14 +105,6 @@ fn main() -> Result<()> {
                 utils::to_compression_ext(forward_file_compression)
             )?;
         }
-    }
-
-    // Exit if files does not have same types
-    if !reverse.is_empty()
-        && forward_file_type != (utils::get_file_type(reverse)?).0
-    {
-        writeln!(ehandle, "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq")?;
-        process::exit(exitcode::DATAERR);
     }
 
     // Handle output dir
@@ -138,9 +142,11 @@ fn main() -> Result<()> {
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
-                    let mut file_path = PathBuf::from("");
-                    file_path.push(output);
-                    file_path.push(format!("{}{}", b_vec[1], ext));
+                    let file_path = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[1], ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
                     let file = fs::OpenOptions::new()
                         .create(true)
@@ -151,9 +157,11 @@ fn main() -> Result<()> {
                 }
 
                 // Create unknown file
-                let mut unk_path = PathBuf::from("");
-                unk_path.push(output);
-                unk_path.push(format!("{}{}", "unknown.fa", ext));
+                let unk_path = utils::create_relpath_from(
+                    [output, format!("{}{}", "unknown.fa", ext).as_str()]
+                        .to_vec(),
+                )
+                .unwrap();
                 let future_unk_path = unk_path.clone();
 
                 let unknown_file = fs::OpenOptions::new()
@@ -164,7 +172,6 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
                 let (stats, is_unk_empty) = utils::se_fa_demux(
                     forward,
                     format,
@@ -203,36 +210,43 @@ fn main() -> Result<()> {
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
-                    let mut file_path = PathBuf::from("");
-                    file_path.push(output);
-                    file_path.push(format!("{}{}", b_vec[1], f_ext));
+                    let file_path1 = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[1], f_ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
-                    let mut file_path1 = PathBuf::from("");
-                    file_path1.push(output);
-                    file_path1.push(format!("{}{}", b_vec[2], r_ext));
+                    let file_path2 = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[2], r_ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
                     let file1 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(file_path)?;
+                        .open(file_path1)?;
 
                     let file2 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(file_path1)?;
+                        .open(file_path2)?;
 
                     barcode_info
                         .insert(b_vec[0].as_bytes(), vec![file1, file2]);
                 }
 
                 // Create unknown files
-                let mut unk_path1 = PathBuf::from("");
-                unk_path1.push(output);
-                unk_path1.push(format!("{}{}", "unknown_R1.fa", f_ext));
-
-                let mut unk_path2 = PathBuf::from("");
-                unk_path2.push(output);
-                unk_path2.push(format!("{}{}", "unknown_R2.fa", r_ext));
+                let unk_path1 = utils::create_relpath_from(
+                    [output, format!("{}{}", "unknown_R1.fa", f_ext).as_str()]
+                        .to_vec(),
+                )
+                .unwrap();
+                let unk_path2 = utils::create_relpath_from(
+                    [output, format!("{}{}", "unknown_R2.fa", r_ext).as_str()]
+                        .to_vec(),
+                )
+                .unwrap();
 
                 let future_unk_path1 = unk_path1.clone();
                 let future_unk_path2 = unk_path2.clone();
@@ -250,7 +264,6 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
                 let (stats, unk_status) = utils::pe_fa_demux(
                     forward,
                     reverse,
@@ -288,9 +301,11 @@ fn main() -> Result<()> {
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
-                    let mut file_path = PathBuf::from("");
-                    file_path.push(output);
-                    file_path.push(format!("{}{}", b_vec[1], ext));
+                    let file_path = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[1], ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
                     let file = fs::OpenOptions::new()
                         .create(true)
@@ -316,7 +331,6 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
                 let (stats, is_unk_empty) = utils::se_fq_demux(
                     forward,
                     format,
@@ -355,36 +369,43 @@ fn main() -> Result<()> {
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
-                    let mut file_path = PathBuf::from("");
-                    file_path.push(output);
-                    file_path.push(format!("{}{}", b_vec[1], f_ext));
+                    let file_path1 = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[1], f_ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
-                    let mut file_path1 = PathBuf::from("");
-                    file_path1.push(output);
-                    file_path1.push(format!("{}{}", b_vec[2], r_ext));
+                    let file_path2 = utils::create_relpath_from(
+                        [output, format!("{}{}", b_vec[2], r_ext).as_str()]
+                            .to_vec(),
+                    )
+                    .unwrap();
 
                     let file1 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(file_path)?;
+                        .open(file_path1)?;
 
                     let file2 = fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(file_path1)?;
+                        .open(file_path2)?;
 
                     barcode_info
                         .insert(b_vec[0].as_bytes(), vec![file1, file2]);
                 }
 
                 // Create unknown files
-                let mut unk_path1 = PathBuf::from("");
-                unk_path1.push(output);
-                unk_path1.push(format!("{}{}", "unknown_R1.fq", f_ext));
-
-                let mut unk_path2 = PathBuf::from("");
-                unk_path2.push(output);
-                unk_path2.push(format!("{}{}", "unknown_R2.fq", r_ext));
+                let unk_path1 = utils::create_relpath_from(
+                    [output, format!("{}{}", "unknown_R1.fq", f_ext).as_str()]
+                        .to_vec(),
+                )
+                .unwrap();
+                let unk_path2 = utils::create_relpath_from(
+                    [output, format!("{}{}", "unknown_R2.fq", r_ext).as_str()]
+                        .to_vec(),
+                )
+                .unwrap();
 
                 let future_unk_path1 = unk_path1.clone();
                 let future_unk_path2 = unk_path2.clone();
@@ -402,7 +423,6 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                writeln!(ohandle, "[INFO] Demultiplexing ...")?;
                 let (stats, unk_status) = utils::pe_fq_demux(
                     forward,
                     reverse,

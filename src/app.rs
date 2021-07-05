@@ -21,36 +21,42 @@ pub fn build_app() -> App<'static, 'static> {
         .arg(
             Arg::with_name("BARCODE")
                 .help("Input barcode file.")
-                .long_help(
-                    "Takes the barcode file containing barcode and output files names data. \
-                        File is formated as barcode\tfile_R1.(fa|fq)\tfile_R2.(fa|fq) for each barcode \
-                        for paired-end data or barcode\tfile.(fa|fq) for single-end data.",
+                .long_help("Takes the barcode file containing barcode and output files data.\n \
+                        Barcode file is tsv formated:\n \
+                         `barcode1  file2_R1.fq  file1_R2.fq`\n \
+                         `barcode2  file2_R1.fq  file2_R2.fq`\n \
+                         `...`\n \
+                        for paired-end data or like:\n \
+                         `barcode1  file1.fq`\n \
+                         `barcode2  file2.fq`\n \
+                         `...`\n \
+                        for single-end data.",
                 )
                 .required(true)
                 .index(1),
         )
         .arg(
             Arg::with_name("FORWARD")
-                .help("Input forward fasta or fastq file. Can be .(gz|xz|bz2) compressed.")
+                .help("Input forward fasta or fastq file.\n Can be .(gz|xz|bz2) compressed.")
                 .long_help(
-                    "Input fasta or fastq file. Correspond to forward file if demultiplexing \
-                        paired-end data or to the single file in demultiplexing single-end data.",
+                    "Input fasta or fastq forward file if demultiplexing paired-end\n \
+                        data or to the single file in demultiplexing single-end data.",
                 )
                 .required(true)
                 .index(2),
         )
         .arg(
             Arg::with_name("REVERSE")
-                .help("Input reverse fasta or fastq file. Can be .(gz|xz|bz2) compressed.")
+                .help("Input reverse fasta or fastq file.\n Can be .(gz|xz|bz2) compressed.")
                 .long_help(
-                    "Input fasta or fastq file. Correspond to reverse file if demultiplexing \
-                        paired-end data. Should be ommited in single-end mode.",
+                    "Input fasta or fastq reverse file if demultiplexing paired-end\n \
+                        data. Should be ommited in single-end mode.",
                 )
                 .index(3),
         )
         .arg(
             Arg::with_name("mismatch")
-                .long_help("Maximum number of mismatches allowed in barcode sequence")
+                .long_help("Maximum number of mismatches allowed in barcode")
                 .short("m")
                 .long("mismatch")
                 .value_name("N")
@@ -58,10 +64,7 @@ pub fn build_app() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("output")
-                .help("Output folder")
-                .long_help(
-                    "Specifies the ouput directory name. Default to sabreur_out.",
-                )
+                .help("Specifies the ouput directory")
                 .short("o")
                 .long("out")
                 .value_name("FOLDER")
@@ -71,33 +74,48 @@ pub fn build_app() -> App<'static, 'static> {
             Arg::with_name("format")
                 .help("Set output files compression format.")
                 .long_help(
-                    "Specifies the compression format of the demultiplexed files. \
-                        Options availables are gz, xz or bz2 depending on your installation \
-                        on your operating system of these libraries.",
+                    "Specifies the compression format of the demultiplexed files:\n \
+                        gz: for gzip files\n \
+                        xz: for xz (lzma) files\n \
+                        bz2: for bzip2 files\n \
+                    Note: These options are available depending on your\n \
+                          installation of their supporting libraries.\n \
+                          Find more on sabreur homepage.",
                 )
                 .long("format")
                 .short("f")
                 .takes_value(true)
-                .possible_values(&["gz", "xz", "bz2"]),
+                .possible_values(&["gz", "xz", "bz2"])
+                .hide_possible_values(true),
         )
         .arg(
             Arg::with_name("level")
                 .help("Set the compression level")
                 .long_help(
-                    "Specifies the compression level wanted for the demultiplexed file",
+                    "Specifies the compression level wanted for the demultiplexed file:\n \
+                        1: Level One, optimize the compression time\n \
+                        2: Level Two\n \
+                        3: Level Three\n \
+                        4: Level Four\n \
+                        5: Level Five\n \
+                        6: Level Six\n \
+                        7: Level Seven\n \
+                        8: Level Eight\n \
+                        9: Level Nine, optimize the size of the output\n",
                 )
                 .long("level")
                 .short("l")
                 .takes_value(true)
                 .possible_values(&["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+                .hide_possible_values(true)
                 .default_value("1"),
         )
         .arg(
             Arg::with_name("force")
                 .help("Force reuse of default output directory")
                 .long_help(
-                    "Reuse the default output directory (sabreur_out). \
-                        This will erase existing directory before creating it.",
+                    "Reuse the default output directory (sabreur_out).\n \
+                    This will erase existing directory before creating it.",
                 )
                 .long("force")
                 .takes_value(false),

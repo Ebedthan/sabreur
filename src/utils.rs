@@ -5,14 +5,26 @@
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self};
+use std::io;
+use std::path::PathBuf;
 
+extern crate indicatif;
 extern crate niffler;
 
+use crate::error;
 use anyhow::{anyhow, Context, Result};
 use bio::io::{fasta, fastq};
+use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::error;
+pub fn create_relpath_from(input: Vec<&str>) -> Result<PathBuf> {
+    let mut path = PathBuf::from("");
+
+    for element in input {
+        path.push(element);
+    }
+
+    Ok(path)
+}
 
 // to_niffler_format function
 pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
@@ -172,7 +184,7 @@ pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 /// write_to_fa(filename, &record);
 /// ```
 ///
-pub fn write_to_fa<'a>(
+pub fn write_fa<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
     record: &'a fasta::Record,
@@ -198,7 +210,7 @@ pub fn write_to_fa<'a>(
 /// ```
 ///
 ///
-pub fn write_to_fq<'a>(
+pub fn write_fq<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
     record: &'a fastq::Record,
@@ -262,38 +274,69 @@ pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
 ///
 ///
 pub fn se_fa_demux<'a>(
-    forward: &'a str,
+    file: &'a str,
     format: niffler::compression::Format,
     level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
-    let (forward_reader, mut compression) =
-        read_file(forward).with_context(|| error::Error::ReadingError {
-            filename: forward.to_string(),
+    // Get fasta file reader and compression mode
+    let (reader, mut compression) =
+        read_file(file).with_context(|| error::Error::ReadingError {
+            filename: file.to_string(),
         })?;
-    let mut forward_records = fasta::Reader::new(forward_reader).records();
 
+    // Get records
+    let mut records = fasta::Reader::new(reader).records();
+
+    // Clone barcode values in barcode_data structure for future iteration
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
+
+    // Get barcode length
     let bc_len = my_vec[0].len();
 
+    // Initialize unknown file as empty
     let mut is_unk_empty = true;
 
+    // Change output compression format to user wanted compression
+    // format if specified by --format option
     if format != niffler::compression::Format::No {
         compression = format;
     }
 
-    while let Some(Ok(f_rec)) = forward_records.next() {
+    // Progress bar
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(120);
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ])
+            .template("[INFO] {spinner:.green} {msg}"),
+    );
+    while let Some(Ok(record)) = records.next() {
+        pb.set_message("Demultiplexing...");
+        // Match sequence and barcode with mismatch
+        // and return matched barcode. We first use
+        // let iter = my_vec.iter() to further stop
+        // the find at first match.
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(i).unwrap()[0],
                 compression,
-                &f_rec,
+                &record,
                 level,
             )
             .with_context(|| {
@@ -303,10 +346,10 @@ pub fn se_fa_demux<'a>(
             })?;
         } else {
             is_unk_empty = false;
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                 compression,
-                &f_rec,
+                &record,
                 level,
             )
             .with_context(|| {
@@ -316,7 +359,7 @@ pub fn se_fa_demux<'a>(
             })?;
         }
     }
-
+    pb.finish_with_message("Done demultiplexing");
     Ok((nb_records, is_unk_empty))
 }
 
@@ -340,38 +383,65 @@ pub fn se_fa_demux<'a>(
 ///
 ///
 pub fn se_fq_demux<'a>(
-    forward: &'a str,
+    file: &'a str,
     format: niffler::compression::Format,
     level: niffler::Level,
     barcode_data: &'a Barcode,
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
-    let (forward_reader, mut compression) =
-        read_file(forward).with_context(|| error::Error::ReadingError {
-            filename: forward.to_string(),
+    // Get fastq file reader and compression mode
+    let (reader, mut compression) =
+        read_file(file).with_context(|| error::Error::ReadingError {
+            filename: file.to_string(),
         })?;
-    let mut forward_records = fastq::Reader::new(forward_reader).records();
 
+    // Get records
+    let mut records = fastq::Reader::new(reader).records();
+
+    // Clone barcode values in barcode_data structure for future iteration
+    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
+
+    // Get barcode length
+    let bc_len = my_vec[0].len();
+
+    // Initialize unknown file as empty
+    let mut is_unk_empty = true;
+
+    // Change output compression format to user wanted compression
+    // format if specified by --format option
     if format != niffler::compression::Format::No {
         compression = format;
     }
 
-    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
-    let bc_len = my_vec[0].len();
-
-    let mut is_unk_empty = true;
-
-    while let Some(Ok(f_rec)) = forward_records.next() {
+    // Progress bar
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(120);
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ])
+            .template("[INFO] {spinner:.green} {msg}"),
+    );
+    while let Some(Ok(record)) = records.next() {
+        pb.set_message("Demultiplexing...");
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(i).unwrap()[0],
                 compression,
-                &f_rec,
+                &record,
                 level,
             )
             .with_context(|| {
@@ -381,10 +451,10 @@ pub fn se_fq_demux<'a>(
             })?;
         } else {
             is_unk_empty = false;
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                 compression,
-                &f_rec,
+                &record,
                 level,
             )
             .with_context(|| {
@@ -394,7 +464,7 @@ pub fn se_fq_demux<'a>(
             })?;
         }
     }
-
+    pb.finish_with_message("Done demultiplexing");
     Ok((nb_records, is_unk_empty))
 }
 
@@ -413,35 +483,62 @@ pub fn pe_fa_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
+    // Get fasta files reader and compression modes
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
         })?;
-    let mut forward_records = fasta::Reader::new(forward_reader).records();
 
     let (reverse_reader, _compression) =
         read_file(reverse).with_context(|| error::Error::ReadingError {
             filename: reverse.to_string(),
         })?;
+
+    // Get records
+    let mut forward_records = fasta::Reader::new(forward_reader).records();
     let mut reverse_records = fasta::Reader::new(reverse_reader).records();
 
+    // Clone barcode values in barcode_data structure for future iteration
+    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
+
+    // Get barcode length
+    let bc_len = my_vec[0].len();
+
+    // Initialize unknown files as empty
+    let mut unk1_empty = "true";
+    let mut unk2_empty = "true";
+
+    // Change output compression format to user wanted compression
+    // format if specified by --format option
     if format != niffler::compression::Format::No {
         compression = format;
     }
 
-    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
-    let bc_len = my_vec[0].len();
-
-    let mut unk1_empty = "true";
-    let mut unk2_empty = "true";
-
+    // Progress bar
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(120);
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ])
+            .template("[INFO] {spinner:.green} {msg}"),
+    );
     while let Some(Ok(f_rec)) = forward_records.next() {
+        pb.set_message("Demultiplexing forward file...");
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(i).unwrap()[0],
                 compression,
                 &f_rec,
@@ -454,7 +551,7 @@ pub fn pe_fa_demux<'a>(
             })?;
         } else {
             unk1_empty = "false";
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                 compression,
                 &f_rec,
@@ -469,12 +566,14 @@ pub fn pe_fa_demux<'a>(
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
+        pb.set_message("Demultiplexing reverse file...");
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(i).unwrap()[1],
                 compression,
                 &r_rec,
@@ -487,7 +586,7 @@ pub fn pe_fa_demux<'a>(
             })?;
         } else {
             unk2_empty = "false";
-            write_to_fa(
+            write_fa(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                 compression,
                 &r_rec,
@@ -500,6 +599,7 @@ pub fn pe_fa_demux<'a>(
             })?;
         }
     }
+    pb.finish_with_message("Done");
     let final_str = format!("{}{}", unk1_empty, unk2_empty);
     Ok((nb_records, final_str))
 }
@@ -519,35 +619,63 @@ pub fn pe_fq_demux<'a>(
     mismatch: i32,
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
+    // Get fasta files reader and compression modes
     let (forward_reader, mut compression) =
         read_file(forward).with_context(|| error::Error::ReadingError {
             filename: forward.to_string(),
         })?;
-    let mut forward_records = fastq::Reader::new(forward_reader).records();
 
     let (reverse_reader, _compression) =
         read_file(reverse).with_context(|| error::Error::ReadingError {
             filename: reverse.to_string(),
         })?;
+
+    // Get records
+    let mut forward_records = fastq::Reader::new(forward_reader).records();
     let mut reverse_records = fastq::Reader::new(reverse_reader).records();
 
+    // Clone barcode values in barcode_data structure for future iteration
+    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
+
+    // Get barcode length
+    let bc_len = my_vec[0].len();
+
+    // Initialize unknown files as empty
+    let mut unk1_empty = "true";
+    let mut unk2_empty = "true";
+
+    // Change output compression format to user wanted compression
+    // format if specified by --format option
     if format != niffler::compression::Format::No {
         compression = format;
     }
 
-    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
-    let bc_len = my_vec[0].len();
-
-    let mut unk1_empty = "true";
-    let mut unk2_empty = "true";
+    // Progress bar
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(120);
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ])
+            .template("[INFO] {spinner:.green} {msg}"),
+    );
 
     while let Some(Ok(f_rec)) = forward_records.next() {
+        pb.set_message("Demultiplexing forward file...");
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(i).unwrap()[0],
                 compression,
                 &f_rec,
@@ -560,7 +688,7 @@ pub fn pe_fq_demux<'a>(
             })?;
         } else {
             unk1_empty = "false";
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
                 compression,
                 &f_rec,
@@ -575,12 +703,14 @@ pub fn pe_fq_demux<'a>(
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
+        pb.set_message("Demultiplexing reverse file...");
         let mut iter = my_vec.iter();
-        let res = iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
 
-        if let Some(i) = res {
+        if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(i).unwrap()[1],
                 compression,
                 &r_rec,
@@ -593,7 +723,7 @@ pub fn pe_fq_demux<'a>(
             })?;
         } else {
             unk2_empty = "false";
-            write_to_fq(
+            write_fq(
                 &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
                 compression,
                 &r_rec,
@@ -606,8 +736,8 @@ pub fn pe_fq_demux<'a>(
             })?;
         }
     }
-
     let final_str = format!("{}{}", unk1_empty, unk2_empty);
+    pb.finish_with_message("Done");
     Ok((nb_records, final_str))
 }
 
@@ -616,6 +746,15 @@ pub fn pe_fq_demux<'a>(
 mod tests {
     use super::*;
     use std::io::prelude::*;
+
+    // create_relpath_from --------------------------------------------------
+    #[test]
+    fn test_create_relpath_from() {
+        assert_eq!(
+            create_relpath_from(["path", "to", "file"].to_vec()).unwrap(),
+            PathBuf::from("path/to/file")
+        );
+    }
 
     // read_file tests ------------------------------------------------------
     #[test]
@@ -850,7 +989,7 @@ mod tests {
         let cmp = niffler::compression::Format::Gzip;
         let file = tempfile::tempfile().expect("Cannot create temp file");
 
-        assert!((write_to_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
+        assert!((write_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
 
         let mut tmpfile =
             tempfile::NamedTempFile::new().expect("Cannot create temp file");
@@ -880,7 +1019,7 @@ mod tests {
         let cmp = niffler::compression::Format::Gzip;
         let file = tempfile::tempfile().expect("Cannot create temp file");
 
-        assert!((write_to_fq(&file, cmp, &record, niffler::Level::One)).is_ok());
+        assert!((write_fq(&file, cmp, &record, niffler::Level::One)).is_ok());
 
         let mut tmpfile =
             tempfile::NamedTempFile::new().expect("Cannot create temp file");
