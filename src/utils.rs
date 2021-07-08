@@ -192,7 +192,7 @@ pub fn write_fa<'a>(
 ) -> Result<()> {
     let handle = niffler::get_writer(Box::new(file), compression, level)?;
 
-    let mut writer = fasta::Writer::new(handle);
+    let mut writer = fasta::Writer::with_capacity(16264, handle);
     let _write_res = writer.write_record(&record)?;
 
     Ok(())
@@ -219,7 +219,7 @@ pub fn write_fq<'a>(
     let handle = niffler::get_writer(Box::new(file), compression, level)
         .with_context(|| anyhow!("Could not get file writer"))?;
 
-    let mut writer = fastq::Writer::new(handle);
+    let mut writer = fastq::Writer::with_capacity(16264, handle);
     let _write_res = writer.write_record(&record).with_context(|| {
         error::Error::CantWriteFile {
             filename: "output file".to_string(),
