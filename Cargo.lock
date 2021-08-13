@@ -1088,6 +1088,7 @@ dependencies = [
  "criterion",
  "exitcode",
  "indicatif",
+ "memchr",
  "niffler",
  "tempfile",
  "thiserror",
