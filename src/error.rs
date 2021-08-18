@@ -4,6 +4,8 @@ use thiserror::Error;
 /* local use */
 use crate::utils;
 
+use std::string::String;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(
