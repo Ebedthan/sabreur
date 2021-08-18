@@ -17,7 +17,6 @@ bio           = "0.35"
 clap          = "~2.33"
 indicatif     = "0.16"
 exitcode      = "1.1.2"
-memchr        = "2.4"
 niffler       = "2.3.2"
 thiserror     = "1.0"
 

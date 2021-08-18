@@ -5,7 +5,6 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Throughput};
 use std::fs::{self, File};
 use std::io;
 
-
 fn write_fa_capacity<'a>(
     file: &'a std::fs::File,
     capacity: usize,

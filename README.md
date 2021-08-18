@@ -1,9 +1,26 @@
-[![Crates.io](https://img.shields.io/crates/v/sabreur.svg)](https://crates.io/crates/sabreur)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/Ebedthan/sabreur/blob/master/LICENSE)
-![CI](https://github.com/Ebedthan/sabreur/workflows/CI/badge.svg)
-[![CodeCov](https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/sabreur)
+<p align="center">
+    <a href="https://github.com/Ebedthan/sabreur">
+        <img src="img/sabreur.png" width="300">
+    </a>
+    </br>
+    <a href="https://github.com/Ebedthan/sabreur/actions?query=workflow%3A%22Continuous+Integration%22">
+        <img src="https://img.shields.io/github/workflow/status/Ebedthan/sabreur/Continuous%20Integration?style=flat&logo=GitHub%20Actions">
+    </a>
+    <a href="https://github.com/Ebedthan/sabreur/actions?query=workflow%3A%22Continuous+Deployment%22">
+        <img src="https://img.shields.io/github/workflow/status/Ebedthan/sabreur/Continuous%20Deployment?style=flat&logo=GitHub%20Actions&label=deploy">
+    </a>
+    <a href="https://crates.io/crates/sabreur">
+        <img src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
+    </a>
+    <a href="https://codecov.io/gh/Ebedthan/sabreur">
+        <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
+    </a>
+    <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
+        <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
+    </a>
+</p>
 
-# sabreur: fast, reliable and handy demultiplexing tool for fastx files.
+# About
 
 With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
 
@@ -103,9 +120,6 @@ Contributions are welcomed under the project [code of conduct](https://github.co
 
 ## Bugs
 Submit problems or requests to the [Issue Tracker](https://github.com/Ebedthan/sabreur/issues).
-
-## License
-Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
 
 ## Code of conduct
 Please note that the sabreur project is released with a [Contributor Code of Conduct](https://github.com/Ebedthan/sabreur/blob/main/CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
