@@ -282,10 +282,7 @@ pub fn se_fa_demux<'a>(
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
     // Get fasta file reader and compression mode
-    let (reader, mut compression) =
-        read_file(file).with_context(|| error::Error::ReadingError {
-            filename: file.to_string(),
-        })?;
+    let (reader, mut compression) = read_file(file)?;
 
     // Get records
     let mut records = fasta::Reader::new(reader).records();
@@ -391,10 +388,7 @@ pub fn se_fq_demux<'a>(
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
     // Get fastq file reader and compression mode
-    let (reader, mut compression) =
-        read_file(file).with_context(|| error::Error::ReadingError {
-            filename: file.to_string(),
-        })?;
+    let (reader, mut compression) = read_file(file)?;
 
     // Get records
     let mut records = fastq::Reader::new(reader).records();
@@ -484,15 +478,9 @@ pub fn pe_fa_demux<'a>(
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
     // Get fasta files reader and compression modes
-    let (forward_reader, mut compression) =
-        read_file(forward).with_context(|| error::Error::ReadingError {
-            filename: forward.to_string(),
-        })?;
+    let (forward_reader, mut compression) = read_file(forward)?;
 
-    let (reverse_reader, _compression) =
-        read_file(reverse).with_context(|| error::Error::ReadingError {
-            filename: reverse.to_string(),
-        })?;
+    let (reverse_reader, _compression) = read_file(reverse)?;
 
     // Get records
     let mut forward_records = fasta::Reader::new(forward_reader).records();
@@ -620,15 +608,9 @@ pub fn pe_fq_demux<'a>(
     nb_records: &'a mut HashMap<&'a [u8], i32>,
 ) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
     // Get fasta files reader and compression modes
-    let (forward_reader, mut compression) =
-        read_file(forward).with_context(|| error::Error::ReadingError {
-            filename: forward.to_string(),
-        })?;
+    let (forward_reader, mut compression) = read_file(forward)?;
 
-    let (reverse_reader, _compression) =
-        read_file(reverse).with_context(|| error::Error::ReadingError {
-            filename: reverse.to_string(),
-        })?;
+    let (reverse_reader, _compression) = read_file(reverse)?;
 
     // Get records
     let mut forward_records = fastq::Reader::new(forward_reader).records();
