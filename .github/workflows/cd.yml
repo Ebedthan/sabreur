@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          cp {LICENSE,README.md,CHANGELOG.md} release/
+          cp {LICENSE,README.md} release/
           if [ "${{ matrix.OS }}" = "windows-2019" ]; then
             cp target/${{ matrix.TARGET }}/release/hyperex.exe release/
           else
@@ -86,5 +86,4 @@ jobs:
           overwrite: true
           tag: ${{ github.ref }}
           release_name: "Release v${{ env.RELEASE_VERSION }}"
-          body: "${{ needs.generate-changelog.outputs.release_body }}"
           
