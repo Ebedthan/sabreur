@@ -1,0 +1,55 @@
+[2021-09-07][17:00:26][sabreur][INFO] sabreur v0.4.1 starting up!
+[2021-09-07][17:00:26][sabreur][INFO] You are in paired-end mode
+[2021-09-07][17:00:26][sabreur][INFO] Reusing directory sabreur_out
+[2021-09-07][17:02:18][sabreur][INFO] 379 records found for GATCCTAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 1184 records found for GATGCTTG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 2472 records found for GAGTGACA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 155 records found for GAGTTCTG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 233 records found for GATCGTTG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 492 records found for GATCACCA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 4700 records found for GAGATCAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 732 records found for GATCCTTC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 839 records found for GAGTTGTC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 267 records found for GATCAGGA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 483 records found for GATCGATC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 143 records found for GAGTTGAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 133 records found for GATGGAAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 1311 records found for GATCTCGA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 168 records found for GATCGAAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 450 records found for GATGCATC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 529 records found for GATGGTAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 2758 records found for GAGTACAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 325 records found for GATGACGA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 5805 records found for GAGATCTC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 870 records found for GATCTCCT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 4995 records found for GAGTCAGA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 287 records found for GATGACCT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 1234 records found for GATCTGGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 1852 records found for GAGTGTCT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 5912 records found for GAGTCTCA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 170 records found for GAGTTCAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 3985 records found for GAGTAGTG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 4970 records found for GAGATGTG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 565 records found for GATGAGGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 395 records found for GATCACGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 2831 records found for GAGTAGAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 667 records found for GAGTGAGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 474 records found for GAGTGTGA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 814 records found for GATGCTAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 940 records found for GATGGATG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 818 records found for GATCGTAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 3828 records found for GAGTCACT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 5772 records found for GAGAGTGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 914 records found for GATCAGCT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 247 records found for GATGCAAG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 822 records found for GATGAGCA barcode
+[2021-09-07][17:02:18][sabreur][INFO] 5561 records found for GAGATGAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 3680 records found for GAGTCTGT barcode
+[2021-09-07][17:02:18][sabreur][INFO] 2804 records found for GAGTACTC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 643 records found for GATCCATG barcode
+[2021-09-07][17:02:18][sabreur][INFO] 581 records found for GATCCAAC barcode
+[2021-09-07][17:02:18][sabreur][INFO] 808 records found for GATCTGCA barcode
+[2021-09-07][17:02:18][sabreur][INFO] Results are available in sabreur_out
+[2021-09-07][17:02:18][sabreur][INFO] Walltime: 0h:1m:51s
+[2021-09-07][17:02:18][sabreur][INFO] Used memory: 9793951 KB
+[2021-09-07][17:02:18][sabreur][INFO] Thanks. Share. Come again!

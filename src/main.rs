@@ -18,6 +18,7 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use clap::crate_version;
+use log::{error, info, warn};
 use sysinfo::{System, SystemExt};
 
 mod app;
@@ -35,10 +36,12 @@ fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
 
     // START ----------------------------------------------------------------
-    let stdout = io::stdout();
-    let mut ohandle = stdout.lock();
     let stderr = io::stderr();
     let mut ehandle = stderr.lock();
+
+    // is --quiet option specified by the user?
+    let quiet = matches.is_present("quiet");
+    utils::setup_logging(quiet)?; // Settting up logging
 
     // Read command-line arguments
     let forward = matches
@@ -61,10 +64,10 @@ fn main() -> Result<()> {
     let barcode = matches
         .value_of("BARCODE")
         .with_context(|| anyhow!("Could not find barcode file"))?;
-    
+
     if !Path::new(barcode).exists() {
         writeln!(ehandle, "[ERROR] Barcode file not found. Is the path correct? with correct set of permissions?")?;
-        process::exit(1);
+        process::exit(exitcode::DATAERR);
     }
     let output = matches.value_of("output").unwrap();
     let mis = matches.value_of("mismatch").unwrap().to_string();
@@ -85,7 +88,6 @@ fn main() -> Result<()> {
     let lv = matches.value_of("level").unwrap().to_string();
     let raw_level = lv.parse::<i32>()?;
     let force = matches.is_present("force");
-    let quiet = matches.is_present("quiet");
 
     // Exit if files does not have same types
     if !reverse.is_empty()
@@ -95,36 +97,29 @@ fn main() -> Result<()> {
         process::exit(exitcode::DATAERR);
     }
 
-    if !quiet {
-        writeln!(ohandle, "[INFO] sabreur v{} starting up!", crate_version!())?;
-        if reverse.is_empty() {
-            writeln!(ohandle, "[INFO] You are in single-end mode")?;
-        } else {
-            writeln!(ohandle, "[INFO] You are in paired-end mode")?;
-        }
+    info!("sabreur v{} starting up!", crate_version!());
+    if reverse.is_empty() {
+        info!("You are in single-end mode");
+    } else {
+        info!("You are in paired-end mode");
     }
 
     // Change file compression format here for files extension
     if format != niffler::compression::Format::No {
         forward_file_compression = format;
-        if !quiet {
-            writeln!(
-                ohandle,
-                "[INFO] Output files will be {} compressed",
-                utils::to_compression_ext(forward_file_compression)
-            )?;
-        }
+        info!(
+            "Output files will be {} compressed",
+            utils::to_compression_ext(forward_file_compression)
+        );
     }
 
     // Handle output dir
     let outdir_exists = Path::new(output).exists();
     if outdir_exists && !force {
-        writeln!(ehandle, "[ERROR] Specified output folder '{}', already exists!\n[ERROR] Please change folder name using --out or use --force.", output)?;
+        error!("Specified output folder '{}', already exists!\nPlease change folder name using --out or use --force.", output);
         process::exit(exitcode::CANTCREAT);
     } else if outdir_exists && force {
-        if !quiet {
-            writeln!(ohandle, "[INFO] Reusing directory {}", output)?;
-        }
+        info!("Reusing directory {}", output);
         fs::remove_dir_all(Path::new(output)).with_context(|| anyhow!("Could not remove folder '{}'. Do you have permission to remove this folder?", output))?;
         fs::create_dir(Path::new(output)).with_context(|| anyhow!("Could not create folder '{}'. Do you have permission to create this folder?", output))?;
     } else if !outdir_exists {
@@ -136,8 +131,8 @@ fn main() -> Result<()> {
     let barcode_data = fs::read_to_string(barcode)?;
     let barcode_fields = utils::split_by_tab(&barcode_data).unwrap();
 
-    if mismatch != 0 && !quiet {
-        writeln!(ohandle, "[WARN] Barcode mismatch allowed: {}", mismatch)?;
+    if mismatch != 0 {
+        warn!("Barcode mismatch allowed: {}", mismatch);
     }
 
     let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
@@ -192,12 +187,11 @@ fn main() -> Result<()> {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            ohandle,
-                            "[INFO] {} records found for {} barcode",
+                        info!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )?;
+                        );
                     }
                 }
 
@@ -285,12 +279,11 @@ fn main() -> Result<()> {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            ohandle,
-                            "[INFO] {} records found for {} barcode",
+                        info!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )?;
+                        );
                     }
                 }
                 if unk_status == *"truetrue" {
@@ -351,12 +344,11 @@ fn main() -> Result<()> {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            ohandle,
-                            "[INFO] {} records found for {} barcode",
+                        info!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )?;
+                        );
                     }
                 }
 
@@ -444,12 +436,11 @@ fn main() -> Result<()> {
 
                 if !quiet {
                     for (key, value) in stats.iter() {
-                        writeln!(
-                            ohandle,
-                            "[INFO] {} records found for {} barcode",
+                        info!(
+                            "{} records found for {} barcode",
                             value,
                             String::from_utf8_lossy(key)
-                        )?;
+                        );
                     }
                 }
                 if unk_status == *"truetrue" {
@@ -463,10 +454,9 @@ fn main() -> Result<()> {
             }
         },
         utils::FileType::None => {
-            writeln!(
-                ehandle,
-                "[ERROR] Supplied files are not fasta or fastq. Is there fas, fa, fasta, fq or fastq in the filename?"
-            )?;
+            error!(
+                "Supplied files are not fasta or fastq. Is there fas, fa, fasta, fq or fastq in the filename?"
+            );
             process::exit(exitcode::DATAERR);
         }
     }
@@ -478,14 +468,10 @@ fn main() -> Result<()> {
         let minutes = (duration.as_secs() / 60) % 60;
         let hours = (duration.as_secs() / 60) / 60;
 
-        writeln!(ohandle, "[INFO] Results are available in {}", output)?;
-        writeln!(
-            ohandle,
-            "[INFO] Walltime: {}h:{}m:{}s",
-            hours, minutes, seconds,
-        )?;
-        writeln!(ohandle, "[INFO] Used memory: {} KB", sys.used_memory())?;
-        writeln!(ohandle, "[INFO] Thanks. Share. Come again!")?;
+        info!("Results are available in {}", output);
+        info!("Walltime: {}h:{}m:{}s", hours, minutes, seconds,);
+        info!("Used memory: {} KB", sys.used_memory());
+        info!("Thanks. Share. Come again!");
     }
 
     Ok(())

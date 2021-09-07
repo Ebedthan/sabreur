@@ -8,11 +8,59 @@ use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 
+extern crate chrono;
+extern crate fern;
 extern crate niffler;
 
 use crate::error;
 use anyhow::{anyhow, Context, Result};
 use bio::io::{fasta, fastq};
+use fern::colors::ColoredLevelConfig;
+
+pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
+    let colors = ColoredLevelConfig::default();
+    let mut base_config = fern::Dispatch::new();
+
+    base_config = match quiet {
+        // if user required quietness let only output warning messages
+        // or messages more severe than warnings
+        true => base_config.level(log::LevelFilter::Warn),
+        // if quietness is not specified which implies verbosity is allowed
+        // output
+        false => base_config.level(log::LevelFilter::Debug),
+    };
+
+    // Separate file config so we can include year, month and day in file logs
+    let file_config = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{}[{}][{}] {}",
+                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .chain(fern::log_file("sabreur.log")?);
+
+    let stdout_config = fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}] {}",
+                chrono::Local::now().format("%H:%M:%S"),
+                colors.color(record.level()),
+                message
+            ))
+        })
+        .chain(io::stdout());
+
+    base_config
+        .chain(file_config)
+        .chain(stdout_config)
+        .apply()?;
+
+    Ok(())
+}
 
 pub fn create_relpath_from(input: Vec<&str>) -> Result<PathBuf> {
     let mut path = PathBuf::from("");

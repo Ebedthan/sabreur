@@ -14,8 +14,11 @@ keywords = ["bioinformatics", "demultiplexing"]
 [dependencies]
 anyhow        = "1.0.40"
 bio           = "0.35"
+chrono        = "0.4"
 clap          = "~2.33"
 exitcode      = "1.1.2"
+fern          = {version = "0.5", features = ["colored"] }
+log           = "0.4"
 niffler       = "2.3.2"
 thiserror     = "1.0"
 sysinfo       = "0.20"
