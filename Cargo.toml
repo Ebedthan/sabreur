@@ -1,6 +1,6 @@
 [package]
 name = "sabreur"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = ["CODE_OF_CONDUCT.md", "tests/*", "benches/*", ".github/*", ".cargo/*"]
@@ -15,10 +15,10 @@ keywords = ["bioinformatics", "demultiplexing"]
 anyhow        = "1.0.40"
 bio           = "0.35"
 clap          = "~2.33"
-indicatif     = "0.16"
 exitcode      = "1.1.2"
 niffler       = "2.3.2"
 thiserror     = "1.0"
+sysinfo       = "0.20"
 
 [dev-dependencies]
 criterion     = "0.3"

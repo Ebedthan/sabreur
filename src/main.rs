@@ -6,6 +6,7 @@
 extern crate anyhow;
 extern crate clap;
 extern crate exitcode;
+extern crate sysinfo;
 
 use std::collections::HashMap;
 use std::env;
@@ -17,6 +18,7 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use clap::crate_version;
+use sysinfo::{System, SystemExt};
 
 mod app;
 mod error;
@@ -25,6 +27,8 @@ mod utils;
 // TODO: Check if supplied barcode file for se or pe is properly
 // formated before giving it to the demultiplexing function
 fn main() -> Result<()> {
+    let mut sys = System::new_all();
+    sys.refresh_all();
     let startime = Instant::now();
 
     // Define command-line arguments ----------------------------------------
@@ -475,6 +479,7 @@ fn main() -> Result<()> {
             "[INFO] Walltime: {}h:{}m:{}s",
             hours, minutes, seconds,
         )?;
+        writeln!(ohandle, "[INFO] Used memory: {} KB", sys.used_memory())?;
         writeln!(ohandle, "[INFO] Thanks. Share. Come again!")?;
     }
 

@@ -8,13 +8,11 @@ use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 
-extern crate indicatif;
 extern crate niffler;
 
 use crate::error;
 use anyhow::{anyhow, Context, Result};
 use bio::io::{fasta, fastq};
-use indicatif::{ProgressBar, ProgressStyle};
 
 pub fn create_relpath_from(input: Vec<&str>) -> Result<PathBuf> {
     let mut path = PathBuf::from("");
@@ -302,24 +300,7 @@ pub fn se_fa_demux<'a>(
         compression = format;
     }
 
-    // Progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(120);
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ])
-            .template("[INFO] {spinner:.green} {msg}"),
-    );
     while let Some(Ok(record)) = records.next() {
-        pb.set_message("Demultiplexing...");
         // Match sequence and barcode with mismatch
         // and return matched barcode. We first use
         // let iter = my_vec.iter() to further stop
@@ -356,7 +337,6 @@ pub fn se_fa_demux<'a>(
             })?;
         }
     }
-    pb.finish_with_message("Done demultiplexing");
     Ok((nb_records, is_unk_empty))
 }
 
@@ -408,24 +388,7 @@ pub fn se_fq_demux<'a>(
         compression = format;
     }
 
-    // Progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(120);
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ])
-            .template("[INFO] {spinner:.green} {msg}"),
-    );
     while let Some(Ok(record)) = records.next() {
-        pb.set_message("Demultiplexing...");
         let mut iter = my_vec.iter();
         let matched_barcode =
             iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
@@ -458,7 +421,6 @@ pub fn se_fq_demux<'a>(
             })?;
         }
     }
-    pb.finish_with_message("Done demultiplexing");
     Ok((nb_records, is_unk_empty))
 }
 
@@ -502,24 +464,7 @@ pub fn pe_fa_demux<'a>(
         compression = format;
     }
 
-    // Progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(120);
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ])
-            .template("[INFO] {spinner:.green} {msg}"),
-    );
     while let Some(Ok(f_rec)) = forward_records.next() {
-        pb.set_message("Demultiplexing forward file...");
         let mut iter = my_vec.iter();
         let matched_barcode =
             iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
@@ -554,7 +499,6 @@ pub fn pe_fa_demux<'a>(
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
-        pb.set_message("Demultiplexing reverse file...");
         let mut iter = my_vec.iter();
         let matched_barcode =
             iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
@@ -587,7 +531,6 @@ pub fn pe_fa_demux<'a>(
             })?;
         }
     }
-    pb.finish_with_message("Done");
     let final_str = format!("{}{}", unk1_empty, unk2_empty);
     Ok((nb_records, final_str))
 }
@@ -632,25 +575,7 @@ pub fn pe_fq_demux<'a>(
         compression = format;
     }
 
-    // Progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(120);
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ])
-            .template("[INFO] {spinner:.green} {msg}"),
-    );
-
     while let Some(Ok(f_rec)) = forward_records.next() {
-        pb.set_message("Demultiplexing forward file...");
         let mut iter = my_vec.iter();
         let matched_barcode =
             iter.find(|&&x| bc_cmp(x, &f_rec.seq()[..bc_len], mismatch));
@@ -685,7 +610,6 @@ pub fn pe_fq_demux<'a>(
     }
 
     while let Some(Ok(r_rec)) = reverse_records.next() {
-        pb.set_message("Demultiplexing reverse file...");
         let mut iter = my_vec.iter();
         let matched_barcode =
             iter.find(|&&x| bc_cmp(x, &r_rec.seq()[..bc_len], mismatch));
@@ -719,7 +643,6 @@ pub fn pe_fq_demux<'a>(
         }
     }
     let final_str = format!("{}{}", unk1_empty, unk2_empty);
-    pb.finish_with_message("Done");
     Ok((nb_records, final_str))
 }
 
