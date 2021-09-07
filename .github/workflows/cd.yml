@@ -88,28 +88,28 @@ jobs:
           mkdir -p release
           cp {LICENSE,README.md,CHANGELOG.md} release/
           if [ "${{ matrix.OS }}" = "windows-2019" ]; then
-            cp target/${{ matrix.TARGET }}/release/hyperex.exe release/
+            cp target/${{ matrix.TARGET }}/release/sabreur.exe release/
           else
-            cp target/${{ matrix.TARGET }}/release/hyperex release/
+            cp target/${{ matrix.TARGET }}/release/sabreur release/
           fi
-          mv release/ hyperex-${{ env.RELEASE_VERSION }}/
+          mv release/ sabreur-${{ env.RELEASE_VERSION }}/
       - name: Create release artifacts
         shell: bash
         run: |
           if [ "${{ matrix.OS }}" = "windows-2019" ]; then
-            7z a -tzip "hyperex-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.zip" \
-              hyperex-${{ env.RELEASE_VERSION }}/
+            7z a -tzip "sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.zip" \
+              sabreur-${{ env.RELEASE_VERSION }}/
           else
-            tar -czvf hyperex-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz \
-              hyperex-${{ env.RELEASE_VERSION }}/
-            shasum -a 512 hyperex-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz \
-              > hyperex-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz.sha512
+            tar -czvf sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz \
+              sabreur-${{ env.RELEASE_VERSION }}/
+            shasum -a 512 sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz \
+              > sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz.sha512
           fi
       - name: Upload the release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.YAYRA_1 }}
-          file: hyperex-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}*
+          file: sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}*
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
