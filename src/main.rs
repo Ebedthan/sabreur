@@ -61,6 +61,11 @@ fn main() -> Result<()> {
     let barcode = matches
         .value_of("BARCODE")
         .with_context(|| anyhow!("Could not find barcode file"))?;
+    
+    if !Path::new(barcode).exists() {
+        writeln!(ehandle, "[ERROR] Barcode file not found. Is the path correct? with correct set of permissions?")?;
+        process::exit(1);
+    }
     let output = matches.value_of("output").unwrap();
     let mis = matches.value_of("mismatch").unwrap().to_string();
     let mismatch = mis.parse::<i32>()?;
