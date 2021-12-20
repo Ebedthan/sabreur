@@ -1,7 +1,9 @@
 use anyhow::Result;
 use bio::io::fasta;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Throughput};
+use criterion::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Throughput,
+};
 use std::fs::{self, File};
 use std::io;
 use triple_accel::*;
@@ -95,17 +97,17 @@ fn bc_triple(bc: &[u8], seq: &[u8]) -> bool {
 }
 
 fn cmp_bench(c: &mut Criterion) {
-    c.bench_function("bc cmp", |b| b.iter(|| bc_cmp(black_box(b"ATCGATGTGC"), black_box(b"ATCGATGTGA"))));
+    c.bench_function("bc cmp", |b| {
+        b.iter(|| bc_cmp(black_box(b"ATCGATGTGC"), black_box(b"ATCGATGTGA")))
+    });
 }
 
 fn triple_bench(c: &mut Criterion) {
-    c.bench_function("triple", |b| b.iter(|| bc_triple(black_box(b"ATCGATGTGC"), black_box(b"ATCGATGTGA"))));
+    c.bench_function("triple", |b| {
+        b.iter(|| bc_triple(black_box(b"ATCGATGTGC"), black_box(b"ATCGATGTGA")))
+    });
 }
 
-criterion_group!(
-    benches,
-    cmp_bench,
-    triple_bench,
-);
+criterion_group!(benches, cmp_bench, triple_bench,);
 
 criterion_main!(benches);
