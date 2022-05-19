@@ -12,12 +12,12 @@ categories = ["command-line-utilities"]
 keywords = ["bioinformatics", "demultiplexing"] 
 
 [dependencies]
-anyhow        = "1.0.40"
-bio           = "0.35"
+anyhow        = "1"
+bio           = "0.41"
 chrono        = "0.4"
-clap          = "~2.33"
+clap          = { version = "3.1", features = ["cargo"] }
 exitcode      = "1.1.2"
-fern          = {version = "0.5", features = ["colored"] }
+fern          = { version = "0.5", features = ["colored"] }
 log           = "0.4"
 niffler       = "2.3.2"
 thiserror     = "1.0"

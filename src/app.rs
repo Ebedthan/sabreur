@@ -1,26 +1,31 @@
-use clap::{crate_version, App, AppSettings, Arg};
+// Copyright 2021-2022 Anicet Ebou.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed except according
+// to those terms.
 
-pub fn build_app() -> App<'static, 'static> {
+use clap::{crate_version, AppSettings, Arg, ColorChoice, Command};
+
+pub fn build_app() -> Command<'static> {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
-        AppSettings::ColoredHelp
+        ColorChoice::Always
     } else {
-        AppSettings::ColorNever
+        ColorChoice::Never
     };
 
-    let app = App::new("sabreur")
+    let app = Command::new("sabreur")
         .version(crate_version!())
-        .usage("sabreur [FLAGS/OPTIONS] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]")
-        .setting(clap_color_setting)
+        .override_usage("sabreur [options] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]")
+        .color(clap_color_setting)
         .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
             "Note: `sabreur -h` prints a short and concise overview while `sabreur --help` gives all \
                  details.",
         )
         .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("Fast, reliable and handy barcode demultiplexing tool for fastx files")
+        .about("Fast, reliable and handy barcode demultiplexing for fastx files")
         .arg(
-            Arg::with_name("BARCODE")
-                .help("Input barcode file.")
+            Arg::new("BARCODE")
+                .help("input barcode file")
                 .long_help("Takes the barcode file containing barcode and output files data.\n \
                         Barcode file is tsv formated:\n \
                          `barcode1  file2_R1.fq  file1_R2.fq`\n \
@@ -36,8 +41,8 @@ pub fn build_app() -> App<'static, 'static> {
                 .index(1),
         )
         .arg(
-            Arg::with_name("FORWARD")
-                .help("Input forward fasta or fastq file.\n Can be .(gz|xz|bz2) compressed.")
+            Arg::new("FORWARD")
+                .help("input forward fastx file.\n")
                 .long_help(
                     "Input fasta or fastq forward file if demultiplexing paired-end\n \
                         data or to the single file in demultiplexing single-end data.",
@@ -46,8 +51,8 @@ pub fn build_app() -> App<'static, 'static> {
                 .index(2),
         )
         .arg(
-            Arg::with_name("REVERSE")
-                .help("Input reverse fasta or fastq file.\n Can be .(gz|xz|bz2) compressed.")
+            Arg::new("REVERSE")
+                .help("input reverse fastx file.\n")
                 .long_help(
                     "Input fasta or fastq reverse file if demultiplexing paired-end\n \
                         data. Should be ommited in single-end mode.",
@@ -55,24 +60,24 @@ pub fn build_app() -> App<'static, 'static> {
                 .index(3),
         )
         .arg(
-            Arg::with_name("mismatch")
-                .long_help("Maximum number of mismatches allowed in barcode")
-                .short("m")
+            Arg::new("mismatch")
+                .long_help("maximum number of mismatches allowed in a barcode")
+                .short('m')
                 .long("mismatch")
-                .value_name("N")
+                .value_name("INT")
                 .default_value("0"),
         )
         .arg(
-            Arg::with_name("output")
-                .help("Specifies the ouput directory")
-                .short("o")
+            Arg::new("output")
+                .help("specifies the ouput directory")
+                .short('o')
                 .long("out")
-                .value_name("FOLDER")
+                .value_name("DIR")
                 .default_value("sabreur_out"),
         )
         .arg(
-            Arg::with_name("format")
-                .help("Set output files compression format.")
+            Arg::new("format")
+                .help("output files compression format")
                 .long_help(
                     "Specifies the compression format of the demultiplexed files:\n \
                         gz: for gzip files\n \
@@ -83,14 +88,15 @@ pub fn build_app() -> App<'static, 'static> {
                           Find more on sabreur homepage.",
                 )
                 .long("format")
-                .short("f")
+                .short('f')
                 .takes_value(true)
+                .value_name("STR")
                 .possible_values(&["gz", "xz", "bz2"])
                 .hide_possible_values(true),
         )
         .arg(
-            Arg::with_name("level")
-                .help("Set the compression level")
+            Arg::new("level")
+                .help("compression level")
                 .long_help(
                     "Specifies the compression level wanted for the demultiplexed file:\n \
                         1: Level One, optimize the compression time\n \
@@ -104,15 +110,16 @@ pub fn build_app() -> App<'static, 'static> {
                         9: Level Nine, optimize the size of the output\n",
                 )
                 .long("level")
-                .short("l")
+                .short('l')
                 .takes_value(true)
+                .value_name("INT")
                 .possible_values(&["1", "2", "3", "4", "5", "6", "7", "8", "9"])
                 .hide_possible_values(true)
                 .default_value("1"),
         )
         .arg(
-            Arg::with_name("force")
-                .help("Force reuse of default output directory")
+            Arg::new("force")
+                .help("force reuse of default output directory")
                 .long_help(
                     "Reuse the default output directory (sabreur_out).\n \
                     This will erase existing directory before creating it.",
@@ -121,9 +128,9 @@ pub fn build_app() -> App<'static, 'static> {
                 .takes_value(false),
         )
         .arg(
-            Arg::with_name("quiet")
-                .long_help("Decrease program verbosity")
-                .short("q")
+            Arg::new("quiet")
+                .long_help("decrease program verbosity")
+                .short('q')
                 .long("quiet")
                 .takes_value(false),
         );

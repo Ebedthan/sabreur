@@ -1,3 +1,4 @@
 /target
 /sabreur_out
 .cargo
+.vscode

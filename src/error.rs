@@ -1,8 +1,10 @@
-/* crate use */
-use thiserror::Error;
+// Copyright 2021-2022 Anicet Ebou.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed except according
+// to those terms.
 
-/* local use */
 use crate::utils;
+use thiserror::Error;
 
 use std::string::String;
 
