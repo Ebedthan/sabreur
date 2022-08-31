@@ -78,6 +78,7 @@ pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
         "gz" => Ok(niffler::compression::Format::Gzip),
         "bz2" => Ok(niffler::compression::Format::Bzip),
         "xz" => Ok(niffler::compression::Format::Lzma),
+        "zst" => Ok(niffler::compression::Format::Zstd),
         _ => Ok(niffler::compression::Format::No),
     }
 }
@@ -98,6 +99,7 @@ pub fn to_compression_ext(compression: niffler::compression::Format) -> String {
         niffler::compression::Format::Gzip => ".gz".to_string(),
         niffler::compression::Format::Bzip => ".bz2".to_string(),
         niffler::compression::Format::Lzma => ".xz".to_string(),
+        niffler::compression::Format::Zstd => ".zst".to_string(),
         niffler::compression::Format::No => "".to_string(),
     }
 }
