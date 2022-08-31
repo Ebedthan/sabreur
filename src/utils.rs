@@ -157,7 +157,7 @@ pub fn read_file(
 /// get_file_type function --------------------------------------------------
 
 // FileType structure
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FileType {
     Fasta,
     Fastq,
@@ -241,7 +241,7 @@ pub fn write_fa<'a>(
     let handle = niffler::get_writer(Box::new(file), compression, level)?;
 
     let mut writer = fasta::Writer::with_capacity(16264, handle);
-    let _write_res = writer.write_record(record)?;
+    writer.write_record(record)?;
 
     Ok(())
 }
@@ -268,7 +268,7 @@ pub fn write_fq<'a>(
         .with_context(|| anyhow!("Could not get file writer"))?;
 
     let mut writer = fastq::Writer::with_capacity(16264, handle);
-    let _write_res = writer.write_record(record).with_context(|| {
+    writer.write_record(record).with_context(|| {
         error::Error::CantWriteFile {
             filename: "output file".to_string(),
         }
