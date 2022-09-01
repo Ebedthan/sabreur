@@ -108,11 +108,10 @@ jobs:
       - name: Upload the release
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.YAYRA }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: sabreur-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}*
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
           release_name: "Release v${{ env.RELEASE_VERSION }}"
           body: "${{ needs.generate-changelog.outputs.release_body }}"
-          
