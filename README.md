@@ -15,7 +15,9 @@
     <a href="https://codecov.io/gh/Ebedthan/sabreur">
         <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
     </a>
-    [![Rust](https://img.shields.io/badge/rust-1.56.1%2B-blue.svg?maxAge=3600)](https://github.com/Ebedthan/sabreur)
+    <a href="https://github.com/Ebedthan/sabreur">
+        <img src="https://img.shields.io/badge/rust-1.56.1%2B-blue.svg?maxAge=3600">
+    </a>
     <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
     </a>
