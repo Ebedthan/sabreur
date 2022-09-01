@@ -26,7 +26,7 @@ pub fn build_app() -> Command<'static> {
         .arg(
             Arg::new("BARCODE")
                 .help("input barcode file")
-                .long_help("Takes the barcode file containing barcode and output files data.\n \
+                .long_help("Takes the barcode file containing barcode and output files data\n \
                         Barcode file is tsv formated:\n \
                          `barcode1  file2_R1.fq  file1_R2.fq`\n \
                          `barcode2  file2_R1.fq  file2_R2.fq`\n \
@@ -35,33 +35,34 @@ pub fn build_app() -> Command<'static> {
                          `barcode1  file1.fq`\n \
                          `barcode2  file2.fq`\n \
                          `...`\n \
-                        for single-end data.",
+                        for single-end data",
                 )
                 .required(true)
                 .index(1),
         )
         .arg(
             Arg::new("FORWARD")
-                .help("input forward fastx file.\n")
+                .help("input forward fastx file\n")
                 .long_help(
                     "Input fasta or fastq forward file if demultiplexing paired-end\n \
-                        data or to the single file in demultiplexing single-end data.",
+                        data or to the single file in demultiplexing single-end data",
                 )
                 .required(true)
                 .index(2),
         )
         .arg(
             Arg::new("REVERSE")
-                .help("input reverse fastx file.\n")
+                .help("input reverse fastx file\n")
                 .long_help(
                     "Input fasta or fastq reverse file if demultiplexing paired-end\n \
-                        data. Should be ommited in single-end mode.",
+                        data. Should be ommited in single-end mode",
                 )
                 .index(3),
         )
         .arg(
             Arg::new("mismatch")
-                .long_help("maximum number of mismatches allowed in a barcode")
+                .help("maximum number of mismatches")
+                .long_help("maximum number of mismatches allowed in a barcode ")
                 .short('m')
                 .long("mismatch")
                 .value_name("INT")
@@ -69,7 +70,7 @@ pub fn build_app() -> Command<'static> {
         )
         .arg(
             Arg::new("output")
-                .help("specifies the ouput directory")
+                .help("ouput directory")
                 .short('o')
                 .long("out")
                 .value_name("DIR")
@@ -83,15 +84,16 @@ pub fn build_app() -> Command<'static> {
                         gz: for gzip files\n \
                         xz: for xz (lzma) files\n \
                         bz2: for bzip2 files\n \
+                        zst: for zstd files \n \
                     Note: These options are available depending on your\n \
                           installation of their supporting libraries.\n \
-                          Find more on sabreur homepage.",
+                          Find more on sabreur homepage",
                 )
                 .long("format")
                 .short('f')
                 .takes_value(true)
                 .value_name("STR")
-                .possible_values(&["gz", "xz", "bz2"])
+                .possible_values(&["gz", "xz", "bz2", "zst"])
                 .hide_possible_values(true),
         )
         .arg(
@@ -119,7 +121,7 @@ pub fn build_app() -> Command<'static> {
         )
         .arg(
             Arg::new("force")
-                .help("force reuse of default output directory")
+                .help("force reuse of output directory")
                 .long_help(
                     "Reuse the default output directory (sabreur_out).\n \
                     This will erase existing directory before creating it.",

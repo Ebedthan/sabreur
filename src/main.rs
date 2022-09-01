@@ -11,7 +11,7 @@ extern crate sysinfo;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{stderr, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::Instant;
@@ -22,7 +22,9 @@ use log::{error, info, warn};
 use sysinfo::{System, SystemExt};
 
 mod app;
+mod demux;
 mod error;
+mod io;
 mod utils;
 
 // TODO: Check if supplied barcode file for se or pe is properly
@@ -36,7 +38,7 @@ fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
 
     // START ----------------------------------------------------------------
-    let stderr = io::stderr();
+    let stderr = stderr();
     let mut ehandle = stderr.lock();
 
     // is --quiet option specified by the user?
@@ -44,54 +46,66 @@ fn main() -> Result<()> {
     utils::setup_logging(quiet)?; // Settting up logging
 
     // Read command-line arguments
+
+    // check forward file
     let forward = matches
-        .value_of("FORWARD")
-        .with_context(|| anyhow!("Could not find input forward file"))?;
-    let (forward_file_type, mut forward_file_compression) =
-        utils::get_file_type(forward).with_context(|| {
-            error::Error::UnableToDetectFileFormat {
-                filename: forward.to_string(),
-            }
-        })?;
+        .get_one::<String>("FORWARD")
+        .expect("input file is required");
 
-    let mut reverse = "";
-    if matches.is_present("REVERSE") {
-        reverse = matches
-            .value_of("REVERSE")
-            .with_context(|| anyhow!("Could not find input reverse file"))?;
-    }
+    let forward_path = Path::new(forward);
 
-    let barcode = matches
-        .value_of("BARCODE")
-        .with_context(|| anyhow!("Could not find barcode file"))?;
-
-    if !Path::new(barcode).exists() {
-        writeln!(ehandle, "[ERROR] Barcode file not found. Is the path correct? with correct set of permissions?")?;
+    if !io::is_fa(&forward_path) && !io::is_fq(&forward_path) {
+        writeln!(
+            ehandle,
+            "error: input file is not correctly formated as fasta or fastq"
+        )?;
         process::exit(exitcode::DATAERR);
     }
-    let output = matches.value_of("output").unwrap();
-    let mis = matches.value_of("mismatch").unwrap().to_string();
+
+    let forward_filetype = io::get_filetype(&forward_path);
+    let mut forward_format = io::which_format(forward);
+
+    // Check barcode file
+    let barcode = matches
+        .get_one::<String>("BARCODE")
+        .expect("input barcode is required");
+
+    if !Path::new(barcode).exists() {
+        writeln!(ehandle, "error: barcode file is not readable")?;
+        process::exit(exitcode::DATAERR);
+    }
+
+    let mut reverse = String::new();
+    if matches.is_present("REVERSE") {
+        reverse = matches
+            .get_one::<String>("REVERSE")
+            .expect("input file is not readable")
+            .to_string();
+    }
+
+    let output = matches.get_one::<String>("output").unwrap();
+    let mis = matches.get_one::<String>("mismatch").unwrap();
     let mismatch = mis.parse::<i32>()?;
 
     // If user force output to be compressed even if input is not
     // add option to change compression of output
     let mut format = niffler::compression::Format::No;
     if matches.is_present("format") {
-        format = utils::to_niffler_format(matches.value_of("format").unwrap())
-            .with_context(|| {
-                anyhow!(
-                    "Could not convert compression format to niffler format"
-                )
-            })?;
+        format = utils::to_niffler_format(
+            matches.get_one::<String>("format").unwrap(),
+        )
+        .with_context(|| {
+            anyhow!("Could not convert compression format to niffler format")
+        })?;
     }
 
-    let lv = matches.value_of("level").unwrap().to_string();
+    let lv = matches.get_one::<String>("level").unwrap();
     let raw_level = lv.parse::<i32>()?;
     let force = matches.is_present("force");
 
     // Exit if files does not have same types
     if !reverse.is_empty()
-        && forward_file_type != (utils::get_file_type(reverse)?).0
+        && forward_filetype != (io::get_filetype(&Path::new(&reverse)))
     {
         writeln!(ehandle, "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq")?;
         process::exit(exitcode::DATAERR);
@@ -106,17 +120,17 @@ fn main() -> Result<()> {
 
     // Change file compression format here for files extension
     if format != niffler::compression::Format::No {
-        forward_file_compression = format;
+        forward_format = format;
         info!(
             "Output files will be {} compressed",
-            utils::to_compression_ext(forward_file_compression)
+            utils::to_compression_ext(forward_format)
         );
     }
 
     // Handle output dir
     let outdir_exists = Path::new(output).exists();
     if outdir_exists && !force {
-        error!("Specified output folder '{}', already exists!\nPlease change folder name using --out or use --force.", output);
+        error!("output folder '{}', already exists! change it using --out or use --force", output);
         process::exit(exitcode::CANTCREAT);
     } else if outdir_exists && force {
         info!("Reusing directory {}", output);
@@ -127,7 +141,7 @@ fn main() -> Result<()> {
     }
 
     // Read data from barcode file
-    let mut barcode_info: utils::Barcode = HashMap::new();
+    let mut barcode_info: demux::Barcode = HashMap::new();
     let barcode_data = fs::read_to_string(barcode)?;
     let barcode_fields = utils::split_by_tab(&barcode_data).unwrap();
 
@@ -138,11 +152,11 @@ fn main() -> Result<()> {
     let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
 
     // Main processing of reads
-    match forward_file_type {
-        utils::FileType::Fasta => match reverse.is_empty() {
+    match forward_filetype {
+        io::FileType::Fasta => match reverse.is_empty() {
             // single-end fasta mode
             true => {
-                let ext = utils::to_compression_ext(forward_file_compression);
+                let ext = utils::to_compression_ext(forward_format);
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
@@ -176,7 +190,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                let (stats, is_unk_empty) = utils::se_fa_demux(
+                let (stats, is_unk_empty) = demux::se_fa_demux(
                     forward,
                     format,
                     utils::to_niffler_level(raw_level),
@@ -201,15 +215,14 @@ fn main() -> Result<()> {
             }
             // paired-end fasta mode
             false => {
-                let (_reverse_file_type, mut reverse_file_compression) =
-                    utils::get_file_type(reverse).unwrap();
+                let mut reverse_format = io::which_format(&reverse);
 
                 if format != niffler::compression::Format::No {
-                    reverse_file_compression = format;
+                    reverse_format = format;
                 }
 
-                let f_ext = utils::to_compression_ext(forward_file_compression);
-                let r_ext = utils::to_compression_ext(reverse_file_compression);
+                let f_ext = utils::to_compression_ext(forward_format);
+                let r_ext = utils::to_compression_ext(reverse_format);
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
@@ -267,9 +280,9 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                let (stats, unk_status) = utils::pe_fa_demux(
+                let (stats, unk_status) = demux::pe_fa_demux(
                     forward,
-                    reverse,
+                    &reverse,
                     format,
                     utils::to_niffler_level(raw_level),
                     &barcode_info,
@@ -296,10 +309,10 @@ fn main() -> Result<()> {
                 }
             }
         },
-        utils::FileType::Fastq => match reverse.is_empty() {
+        io::FileType::Fastq => match reverse.is_empty() {
             // single-end fastq mode
             true => {
-                let ext = utils::to_compression_ext(forward_file_compression);
+                let ext = utils::to_compression_ext(forward_format);
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
@@ -333,7 +346,7 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file]);
 
                 // Demultiplexing
-                let (stats, is_unk_empty) = utils::se_fq_demux(
+                let (stats, is_unk_empty) = demux::se_fq_demux(
                     forward,
                     format,
                     utils::to_niffler_level(raw_level),
@@ -358,15 +371,14 @@ fn main() -> Result<()> {
             }
             // paired-end fastq mode
             false => {
-                let (_reverse_file_type, mut reverse_file_compression) =
-                    utils::get_file_type(reverse).unwrap();
+                let mut reverse_format = io::which_format(&reverse);
 
                 if format != niffler::compression::Format::No {
-                    reverse_file_compression = format;
+                    reverse_format = format;
                 }
 
-                let f_ext = utils::to_compression_ext(forward_file_compression);
-                let r_ext = utils::to_compression_ext(reverse_file_compression);
+                let f_ext = utils::to_compression_ext(forward_format);
+                let r_ext = utils::to_compression_ext(reverse_format);
 
                 // Read barcode data
                 for b_vec in barcode_fields.iter() {
@@ -424,9 +436,9 @@ fn main() -> Result<()> {
                 barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
 
                 // Demultiplexing
-                let (stats, unk_status) = utils::pe_fq_demux(
+                let (stats, unk_status) = demux::pe_fq_demux(
                     forward,
-                    reverse,
+                    &reverse,
                     format,
                     utils::to_niffler_level(raw_level),
                     &barcode_info,
@@ -453,12 +465,6 @@ fn main() -> Result<()> {
                 }
             }
         },
-        utils::FileType::None => {
-            error!(
-                "Supplied files are not fasta or fastq. Is there fas, fa, fasta, fq or fastq in the filename?"
-            );
-            process::exit(exitcode::DATAERR);
-        }
     }
 
     if !quiet {
