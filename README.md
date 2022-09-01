@@ -15,6 +15,7 @@
     <a href="https://codecov.io/gh/Ebedthan/sabreur">
         <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
     </a>
+    [![Rust](https://img.shields.io/badge/rust-1.56.1%2B-blue.svg?maxAge=3600)](https://github.com/Ebedthan/sabreur)
     <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
     </a>
@@ -36,10 +37,12 @@ sabreur barcode.txt input_R1.fq.gz input_R2.fq.gz
 
 ### Single-end mode
 ```
-sabreur barcode.txt input.fa --format xz
+sabreur barcode.txt input.fq
 ```
 
-Input sequences files can be fasta or fastq, gzipped or not. Just give the sequences, sabreur know how to handle it!
+Input sequences files can be fasta or fastq, compressed or not. 
+The supported compression format are gz, bz2, xz and zst.
+Just give the sequences, sabreur know how to handle it!
 
 ## Command-line arguments
 
@@ -70,6 +73,7 @@ ARGS:
 - libgz for gz file support
 - liblzma for xz file support
 - libbzip2 for bzip2 file support
+- zstd for zstd file support
 
 
 ## Installation
@@ -102,7 +106,9 @@ We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with 
 | [sabre](https://github.com/najoshi/sabre) | 32.911 ± 2.411 | - | 109.470 ± 49.909 | -     |
 | **sabreur** | 10.843 ± 0.531| 93.840 ± 0.446    | 40.878 ± 13.743     | 187.533 ± 0.572   |
 
- 
+
+### Minimum Rust version policy
+This crate's minimum supported `rustc` version is `1.56.1`.
 
 ## Note
 Sabreur use colored output in help, nevertheless sabreur honors [NO_COLORS](https://no-color.org/) environment variable.

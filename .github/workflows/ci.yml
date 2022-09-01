@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ "**" ]
+    branches: ["**"]
 
 jobs:
   check:
@@ -25,7 +25,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-  
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -59,7 +59,6 @@ jobs:
           command: test
           args: --no-fail-fast
 
-  
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +81,7 @@ jobs:
 
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v2
-  
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -117,7 +116,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.54.0
+          toolchain: 1.56.1
           override: true
 
       - name: Run tests
