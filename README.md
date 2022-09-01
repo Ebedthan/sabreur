@@ -48,24 +48,23 @@ Just give the sequences, sabreur know how to handle it!
 
 ```
 USAGE:
-    sabreur [FLAGS] [OPTIONS] <BARCODE> <FORWARD> [REVERSE]
-
-FLAGS:
-        --force      Force reuse of output directory
-    -h, --help       Prints help information
-    -q, --quiet      Decrease program verbosity
-    -V, --version    Prints version information
-
-OPTIONS:
-    -f, --format <format>    Set output files compression format. [possible values: gz, xz, bz2]
-    -l, --level <level>      Set the compression level [default: 1]  [possible values: 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    -m, --mismatch <N>       Maximum number of mismatches allowed in a barcode [default: 0]
-    -o, --out <FOLDER>       Output folder [default: sabreur_out]
+    sabreur [options] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]
 
 ARGS:
-    <BARCODE>    Input barcode file.
-    <FORWARD>    Input forward fasta or fastq file. Can be gz, xz or bz2 compressed.
-    <REVERSE>    Input reverse fasta or fastq file. Can be gz, xz or bz2 compressed.
+    <BARCODE>    input barcode file
+    <FORWARD>    input forward fastx file
+    <REVERSE>    input reverse fastx file
+
+OPTIONS:
+    -m, --mismatch <INT>    maximum number of mismatches [default: 0]
+    -o, --out <DIR>         ouput directory [default: sabreur_out]
+    -f, --format <STR>      output files compression format
+    -l, --level <INT>       compression level [default: 1]
+        --force             force reuse of output directory
+    -q, --quiet             decrease program verbosity
+    -h, --help              Print help information
+    -V, --version           Print version information
+
 ```
 
 ## Requirements
