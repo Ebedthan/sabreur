@@ -13,23 +13,7 @@ use crate::utils::bc_cmp;
 
 pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 
-/// Demultiplex a fasta::Record of single-end file
-///
-/// # Example
-/// ```rust
-///
-/// let p = Path::new("file.fa.gz");
-/// let out = "outfolder";
-/// let (fr, cmp) = read_file(&p).expect("Cannot open");
-/// let mut records = fasta::Reader::new(fr).records();
-/// let mut bc_data: Barcode = HashMap::new();
-/// bc_data.insert("ACCGTA", vec!["id1.fa"]);
-/// bc_data.insert("ATTGTT", vec!["id2.fa"]);
-///
-/// assert!(se_fa_demux(&mut records, cmp, &bc_data, out).is_ok());
-/// ```
-///
-///
+// Demultiplex a fasta::Record of single-end file
 pub fn se_fa_demux<'a>(
     file: &'a str,
     format: niffler::compression::Format,
@@ -91,23 +75,7 @@ pub fn se_fa_demux<'a>(
     Ok((nb_records, is_unk_empty))
 }
 
-/// Demultiplex a fastq::Record of single-end file
-///
-/// # Example
-/// ```rust
-///
-/// let p = Path::new("file.fq.gz");
-/// let out = "outfolder";
-/// let (fr, cmp) = read_file(&p).expect("Cannot open");
-/// let mut records = fasta::Reader::new(fr).records();
-/// let mut bc_data: Barcode = HashMap::new();
-/// bc_data.insert("ACCGTA", vec!["id1.fa"]);
-/// bc_data.insert("ATTGTT", vec!["id2.fa"]);
-///
-/// assert!(se_fq_demux(&mut records, cmp, &bc_data, out).is_ok());
-/// ```
-///
-///
+// Demultiplex a fastq::Record of single-end file
 pub fn se_fq_demux<'a>(
     file: &'a str,
     format: niffler::compression::Format,
@@ -165,10 +133,7 @@ pub fn se_fq_demux<'a>(
     Ok((nb_records, is_unk_empty))
 }
 
-/// Demultiplex a fasta::Record of paired-end file
-///
-///
-///
+// Demultiplex a fasta::Record of paired-end file
 pub fn pe_fa_demux<'a>(
     forward: &'a str,
     reverse: &'a str,
@@ -258,10 +223,7 @@ pub fn pe_fa_demux<'a>(
     Ok((nb_records, final_str))
 }
 
-/// Demultiplex a fasta::Record of paired-end file
-///
-///
-///
+// Demultiplex a fasta::Record of paired-end file
 pub fn pe_fq_demux<'a>(
     forward: &'a str,
     reverse: &'a str,
@@ -351,6 +313,7 @@ pub fn pe_fq_demux<'a>(
     Ok((nb_records, final_str))
 }
 
+// Tests ----------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;

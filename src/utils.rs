@@ -58,14 +58,12 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-pub fn create_relpath_from(input: Vec<&str>) -> Result<PathBuf> {
+pub fn create_relpath_from(input: Vec<&str>) -> PathBuf {
     let mut path = PathBuf::from("");
 
-    for element in input {
-        path.push(element);
-    }
+    input.iter().for_each(|x| path.push(x));
 
-    Ok(path)
+    path
 }
 
 // to_niffler_format function
@@ -122,13 +120,11 @@ pub fn split_by_tab(string: &str) -> Result<Vec<Vec<&str>>> {
 pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
     // This wonderful line below compute the number of
     // character mismatch between two strings
-    let nb_mismatch: i32 = bc
-        .iter()
+    bc.iter()
         .zip(seq.iter())
         .map(|(a, b)| (a != b) as i32)
-        .sum();
-
-    nb_mismatch <= mismatch
+        .sum::<i32>()
+        <= mismatch
 }
 
 // Tests --------------------------------------------------------------------
@@ -139,7 +135,7 @@ mod tests {
     #[test]
     fn test_create_relpath_from() {
         assert_eq!(
-            create_relpath_from(["path", "to", "file"].to_vec()).unwrap(),
+            create_relpath_from(["path", "to", "file"].to_vec()),
             PathBuf::from("path/to/file")
         );
     }

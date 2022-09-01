@@ -10,25 +10,12 @@ use std::path::Path;
 use anyhow::{anyhow, Context, Result};
 use bio::io::{fasta, fasta::FastaRead, fastq, fastq::FastqRead};
 
-use crate::error;
-
-/// Get reader and compression format of file
-///
-/// # Example
-/// ```rust
-/// # use std::path::Path;
-///
-/// let path = Path::new("path/to/file");
-/// let (reader, compression) = read_file(&path);
-/// ```
-///
+// Get reader and compression format of file
 pub fn read_file(
     filename: &str,
 ) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
     let raw_in = Box::new(io::BufReader::new(
-        File::open(filename).with_context(|| error::Error::CantReadFile {
-            filename: filename.to_string(),
-        })?,
+        File::open(filename).expect("file should be readable"),
     ));
 
     niffler::get_reader(raw_in).with_context(|| {
@@ -68,11 +55,7 @@ pub fn is_fq<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> bool {
 
 pub fn which_format(filename: &str) -> niffler::compression::Format {
     let raw_in = Box::new(io::BufReader::new(
-        File::open(filename)
-            .with_context(|| error::Error::CantReadFile {
-                filename: filename.to_string(),
-            })
-            .unwrap(),
+        File::open(filename).expect("file should be readable"),
     ));
 
     let (_, compression) = niffler::sniff(raw_in).expect("cannot");
@@ -95,17 +78,7 @@ pub fn get_filetype<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> FileType {
     }
 }
 
-/// Write to provided data to a fasta file in append mode
-///
-/// # Example
-/// ```rust
-///
-/// # use bio::io::fasta;
-/// let filename = "myfile.fa";
-/// let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-/// write_to_fa(filename, &record);
-/// ```
-///
+// Write to provided data to a fasta file in append mode
 pub fn write_fa<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
@@ -120,18 +93,7 @@ pub fn write_fa<'a>(
     Ok(())
 }
 
-/// Write to provided data to a fastq file in append mode
-///
-/// # Example
-/// ```rust
-///
-/// # use bio::io::fastq;
-/// let filename = "myfile.fq";
-/// let record = fastq::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-/// write_to_fq(filename, &record);
-/// ```
-///
-///
+// Write to provided data to a fastq file in append mode
 pub fn write_fq<'a>(
     file: &'a std::fs::File,
     compression: niffler::compression::Format,
@@ -142,11 +104,9 @@ pub fn write_fq<'a>(
         .with_context(|| anyhow!("Could not get file writer"))?;
 
     let mut writer = fastq::Writer::with_capacity(16264, handle);
-    writer.write_record(record).with_context(|| {
-        error::Error::CantWriteFile {
-            filename: "output file".to_string(),
-        }
-    })?;
+    writer
+        .write_record(record)
+        .expect("file should be wrtiable");
 
     Ok(())
 }

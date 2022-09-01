@@ -1138,7 +1138,6 @@ dependencies = [
  "niffler",
  "sysinfo",
  "tempfile",
- "thiserror",
  "triple_accel",
 ]
 

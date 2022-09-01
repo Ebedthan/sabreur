@@ -23,7 +23,6 @@ use sysinfo::{System, SystemExt};
 
 mod app;
 mod demux;
-mod error;
 mod io;
 mod utils;
 
@@ -163,8 +162,7 @@ fn main() -> Result<()> {
                     let file_path = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[1], ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file = fs::OpenOptions::new()
                         .create(true)
@@ -178,8 +176,7 @@ fn main() -> Result<()> {
                 let unk_path = utils::create_relpath_from(
                     [output, format!("{}{}", "unknown.fa", ext).as_str()]
                         .to_vec(),
-                )
-                .unwrap();
+                );
                 let future_unk_path = unk_path.clone();
 
                 let unknown_file = fs::OpenOptions::new()
@@ -229,14 +226,12 @@ fn main() -> Result<()> {
                     let file_path1 = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[1], f_ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file_path2 = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[2], r_ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file1 = fs::OpenOptions::new()
                         .create(true)
@@ -256,13 +251,11 @@ fn main() -> Result<()> {
                 let unk_path1 = utils::create_relpath_from(
                     [output, format!("{}{}", "unknown_R1.fa", f_ext).as_str()]
                         .to_vec(),
-                )
-                .unwrap();
+                );
                 let unk_path2 = utils::create_relpath_from(
                     [output, format!("{}{}", "unknown_R2.fa", r_ext).as_str()]
                         .to_vec(),
-                )
-                .unwrap();
+                );
 
                 let future_unk_path1 = unk_path1.clone();
                 let future_unk_path2 = unk_path2.clone();
@@ -319,8 +312,7 @@ fn main() -> Result<()> {
                     let file_path = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[1], ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file = fs::OpenOptions::new()
                         .create(true)
@@ -385,14 +377,12 @@ fn main() -> Result<()> {
                     let file_path1 = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[1], f_ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file_path2 = utils::create_relpath_from(
                         [output, format!("{}{}", b_vec[2], r_ext).as_str()]
                             .to_vec(),
-                    )
-                    .unwrap();
+                    );
 
                     let file1 = fs::OpenOptions::new()
                         .create(true)
@@ -412,13 +402,11 @@ fn main() -> Result<()> {
                 let unk_path1 = utils::create_relpath_from(
                     [output, format!("{}{}", "unknown_R1.fq", f_ext).as_str()]
                         .to_vec(),
-                )
-                .unwrap();
+                );
                 let unk_path2 = utils::create_relpath_from(
                     [output, format!("{}{}", "unknown_R2.fq", r_ext).as_str()]
                         .to_vec(),
-                )
-                .unwrap();
+                );
 
                 let future_unk_path1 = unk_path1.clone();
                 let future_unk_path2 = unk_path2.clone();
@@ -476,7 +464,7 @@ fn main() -> Result<()> {
 
         info!("Results are available in {}", output);
         info!("Walltime: {}h:{}m:{}s", hours, minutes, seconds,);
-        info!("Used memory: {} KB", sys.used_memory());
+        info!("Used memory: {} bytes", sys.used_memory());
         info!("Thanks. Share. Come again!");
     }
 
