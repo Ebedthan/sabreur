@@ -111,7 +111,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
- "triple_accel",
+ "triple_accel 0.3.4",
  "vec_map",
 ]
 
@@ -1138,7 +1138,7 @@ dependencies = [
  "niffler",
  "sysinfo",
  "tempfile",
- "triple_accel",
+ "triple_accel 0.4.0",
 ]
 
 [[package]]
@@ -1352,6 +1352,12 @@ name = "triple_accel"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "622b09ce2fe2df4618636fb92176d205662f59803f39e70d1c333393082de96c"
+
+[[package]]
+name = "triple_accel"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22048bc95dfb2ffd05b1ff9a756290a009224b60b2f0e7525faeee7603851e63"
 
 [[package]]
 name = "typenum"

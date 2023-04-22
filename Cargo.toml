@@ -25,7 +25,7 @@ sysinfo       = "0.26"
 [dev-dependencies]
 criterion     = "0.3"
 tempfile      = "3"
-triple_accel  = "*"
+triple_accel  = "0.4"
 
 [profile.release]
 opt-level       = 3
@@ -34,10 +34,6 @@ overflow-checks = false
 lto             = 'thin'
 panic           = 'abort'
 incremental     = false
-
-[[bench]]
-name = "my_benchmark"
-harness = false
 
 [[bin]]
 name = "sabreur"
