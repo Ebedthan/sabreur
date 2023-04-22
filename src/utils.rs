@@ -153,7 +153,7 @@ mod tests {
         let bc = b"TGCA";
         let seq = b"ATCGATCGATCG";
 
-        assert_eq!(bc_cmp(bc, seq, 0), false);
+        assert!(!bc_cmp(bc, seq, 0));
     }
 
     #[test]
@@ -169,7 +169,7 @@ mod tests {
         let bc = b"AACG";
         let seq = b"ATCGATCGATCG";
 
-        assert_eq!(bc_cmp(bc, seq, 0), false);
+        assert!(!bc_cmp(bc, seq, 0));
     }
 
     #[test]

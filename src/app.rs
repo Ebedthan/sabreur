@@ -93,7 +93,7 @@ pub fn build_app() -> Command<'static> {
                 .short('f')
                 .takes_value(true)
                 .value_name("STR")
-                .possible_values(&["gz", "xz", "bz2", "zst"])
+                .possible_values(["gz", "xz", "bz2", "zst"])
                 .hide_possible_values(true),
         )
         .arg(
@@ -115,7 +115,7 @@ pub fn build_app() -> Command<'static> {
                 .short('l')
                 .takes_value(true)
                 .value_name("INT")
-                .possible_values(&["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+                .possible_values(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
                 .hide_possible_values(true)
                 .default_value("1"),
         )
