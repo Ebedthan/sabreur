@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     let mut ehandle = stderr.lock();
 
     // is --quiet option specified by the user?
-    let quiet = matches.is_present("quiet");
+    let quiet = matches.get_flag("quiet");
     utils::setup_logging(quiet)?; // Settting up logging
 
     // Read command-line arguments
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
     }
 
     let mut reverse = String::new();
-    if matches.is_present("REVERSE") {
+    if matches.contains_id("REVERSE") {
         reverse = matches
             .get_one::<String>("REVERSE")
             .expect("input file is not readable")
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
     // If user force output to be compressed even if input is not
     // add option to change compression of output
     let mut format = niffler::compression::Format::No;
-    if matches.is_present("format") {
+    if matches.contains_id("format") {
         format = utils::to_niffler_format(
             matches.get_one::<String>("format").unwrap(),
         )
@@ -100,7 +100,7 @@ fn main() -> Result<()> {
 
     let lv = matches.get_one::<String>("level").unwrap();
     let raw_level = lv.parse::<i32>()?;
-    let force = matches.is_present("force");
+    let force = matches.get_flag("force");
 
     // Exit if files does not have same types
     if !reverse.is_empty()

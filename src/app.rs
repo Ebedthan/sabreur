@@ -1,11 +1,11 @@
-// Copyright 2021-2023 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, AppSettings, Arg, ColorChoice, Command};
+use clap::{crate_version, Arg, ArgAction, ColorChoice, Command};
 
-pub fn build_app() -> Command<'static> {
+pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
         ColorChoice::Always
     } else {
@@ -16,7 +16,6 @@ pub fn build_app() -> Command<'static> {
         .version(crate_version!())
         .override_usage("sabreur [options] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]")
         .color(clap_color_setting)
-        .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
             "Note: `sabreur -h` prints a short and concise overview while `sabreur --help` gives all \
                  details.",
@@ -91,9 +90,8 @@ pub fn build_app() -> Command<'static> {
                 )
                 .long("format")
                 .short('f')
-                .takes_value(true)
                 .value_name("STR")
-                .possible_values(["gz", "xz", "bz2", "zst"])
+                .value_parser(clap::builder::PossibleValuesParser::new(["gz", "xz", "bz2", "zst"]))
                 .hide_possible_values(true),
         )
         .arg(
@@ -113,9 +111,8 @@ pub fn build_app() -> Command<'static> {
                 )
                 .long("level")
                 .short('l')
-                .takes_value(true)
                 .value_name("INT")
-                .possible_values(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+                .value_parser(clap::builder::PossibleValuesParser::new(["1", "2", "3", "4", "5", "6", "7", "8", "9"]))
                 .hide_possible_values(true)
                 .default_value("1"),
         )
@@ -126,16 +123,26 @@ pub fn build_app() -> Command<'static> {
                     "Reuse the default output directory (sabreur_out).\n \
                     This will erase existing directory before creating it.",
                 )
+                .action(ArgAction::SetTrue)
                 .long("force")
-                .takes_value(false),
         )
         .arg(
             Arg::new("quiet")
                 .long_help("decrease program verbosity")
                 .short('q')
                 .long("quiet")
-                .takes_value(false),
+                .action(ArgAction::SetTrue)
         );
 
     app
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_cmd() {
+        build_app().debug_assert();
+    }
 }
