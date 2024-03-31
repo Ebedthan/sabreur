@@ -4,6 +4,7 @@
 // to those terms.
 
 use clap::{crate_version, Arg, ArgAction, ColorChoice, Command};
+use std::path::Path;
 
 pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
@@ -37,7 +38,8 @@ pub fn build_app() -> Command {
                         for single-end data",
                 )
                 .required(true)
-                .index(1),
+                .index(1)
+                .value_parser(is_file),
         )
         .arg(
             Arg::new("FORWARD")
@@ -47,7 +49,8 @@ pub fn build_app() -> Command {
                         data or to the single file in demultiplexing single-end data",
                 )
                 .required(true)
-                .index(2),
+                .index(2)
+                .value_parser(is_file),
         )
         .arg(
             Arg::new("REVERSE")
@@ -56,7 +59,8 @@ pub fn build_app() -> Command {
                     "Input fasta or fastq reverse file if demultiplexing paired-end\n \
                         data. Should be ommited in single-end mode",
                 )
-                .index(3),
+                .index(3)
+                .value_parser(is_file),
         )
         .arg(
             Arg::new("mismatch")
@@ -133,6 +137,14 @@ pub fn build_app() -> Command {
                 .long("quiet")
                 .action(ArgAction::SetTrue)
         )
+}
+
+fn is_file(s: &str) -> Result<String, String> {
+    if Path::new(s).is_file() {
+        Ok(s.to_string())
+    } else {
+        Err("Path does not exists".to_string())
+    }
 }
 
 #[cfg(test)]

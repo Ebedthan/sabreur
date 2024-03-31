@@ -19,7 +19,7 @@ use std::time::Instant;
 use anyhow::{anyhow, Context, Result};
 use clap::crate_version;
 use log::{error, info, warn};
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 
 mod app;
 mod demux;
