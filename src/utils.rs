@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -67,24 +67,24 @@ pub fn create_relpath_from(input: Vec<&str>) -> PathBuf {
 }
 
 // to_niffler_format function
-pub fn to_niffler_format(format: &str) -> Result<niffler::compression::Format> {
+pub fn to_niffler_format(format: &str) -> Result<niffler::send::compression::Format> {
     match format {
-        "gz" => Ok(niffler::compression::Format::Gzip),
-        "bz2" => Ok(niffler::compression::Format::Bzip),
-        "xz" => Ok(niffler::compression::Format::Lzma),
-        "zst" => Ok(niffler::compression::Format::Zstd),
-        _ => Ok(niffler::compression::Format::No),
+        "gz" => Ok(niffler::send::compression::Format::Gzip),
+        "bz2" => Ok(niffler::send::compression::Format::Bzip),
+        "xz" => Ok(niffler::send::compression::Format::Lzma),
+        "zst" => Ok(niffler::send::compression::Format::Zstd),
+        _ => Ok(niffler::send::compression::Format::No),
     }
 }
 
 // Convert niffler compression format to a file extension
-pub fn to_compression_ext(compression: niffler::compression::Format) -> String {
+pub fn to_compression_ext(compression: niffler::send::compression::Format) -> String {
     match compression {
-        niffler::compression::Format::Gzip => ".gz".to_string(),
-        niffler::compression::Format::Bzip => ".bz2".to_string(),
-        niffler::compression::Format::Lzma => ".xz".to_string(),
-        niffler::compression::Format::Zstd => ".zst".to_string(),
-        niffler::compression::Format::No => "".to_string(),
+        niffler::send::compression::Format::Gzip => ".gz".to_string(),
+        niffler::send::compression::Format::Bzip => ".bz2".to_string(),
+        niffler::send::compression::Format::Lzma => ".xz".to_string(),
+        niffler::send::compression::Format::Zstd => ".zst".to_string(),
+        niffler::send::compression::Format::No => "".to_string(),
     }
 }
 
@@ -112,7 +112,7 @@ pub fn split_by_tab(string: &str) -> Result<Vec<Vec<&str>>> {
             .map(|line| line.split('\t').collect())
             .collect())
     } else {
-        Err(anyhow!("The barcode file is not tab-delimited"))
+        Err(anyhow!("string is not tab-delimited"))
     }
 }
 
@@ -183,10 +183,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_split_by_tab_not_ok() {
         let mystring = "HelloWorldEarth\nBrianwasthere";
-        split_by_tab(mystring).unwrap();
+        assert_eq!(split_by_tab(mystring).is_err(), true);
     }
 
     #[test]
@@ -206,44 +205,44 @@ mod tests {
     fn test_to_niffler_format() {
         assert_eq!(
             to_niffler_format("gz").unwrap(),
-            niffler::compression::Format::Gzip
+            niffler::send::compression::Format::Gzip
         );
         assert_eq!(
             to_niffler_format("xz").unwrap(),
-            niffler::compression::Format::Lzma
+            niffler::send::compression::Format::Lzma
         );
         assert_eq!(
             to_niffler_format("bz2").unwrap(),
-            niffler::compression::Format::Bzip
+            niffler::send::compression::Format::Bzip
         );
         assert_eq!(
             to_niffler_format("zst").unwrap(),
-            niffler::compression::Format::Zstd
+            niffler::send::compression::Format::Zstd
         );
         assert_eq!(
             to_niffler_format("txt").unwrap(),
-            niffler::compression::Format::No
+            niffler::send::compression::Format::No
         );
     }
 
     #[test]
     fn test_to_compression_ext() {
         assert_eq!(
-            to_compression_ext(niffler::compression::Format::Gzip),
+            to_compression_ext(niffler::send::compression::Format::Gzip),
             *".gz"
         );
         assert_eq!(
-            to_compression_ext(niffler::compression::Format::Lzma),
+            to_compression_ext(niffler::send::compression::Format::Lzma),
             *".xz"
         );
         assert_eq!(
-            to_compression_ext(niffler::compression::Format::Bzip),
+            to_compression_ext(niffler::send::compression::Format::Bzip),
             *".bz2"
         );
         assert_eq!(
-            to_compression_ext(niffler::compression::Format::Zstd),
+            to_compression_ext(niffler::send::compression::Format::Zstd),
             *".zst"
         );
-        assert_eq!(to_compression_ext(niffler::compression::Format::No), *"");
+        assert_eq!(to_compression_ext(niffler::send::compression::Format::No), *"");
     }
 }

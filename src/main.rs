@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{stderr, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
 use std::time::Instant;
 
@@ -51,17 +51,6 @@ fn main() -> Result<()> {
         .get_one::<String>("FORWARD")
         .expect("input file is required");
 
-    let forward_path = Path::new(forward);
-
-    if !io::is_fa(&forward_path) && !io::is_fq(&forward_path) {
-        writeln!(
-            ehandle,
-            "error: input file is not correctly formated as fasta or fastq"
-        )?;
-        process::exit(exitcode::DATAERR);
-    }
-
-    let forward_filetype = io::get_filetype(&forward_path);
     let mut forward_format = io::which_format(forward);
 
     // Check barcode file
@@ -88,7 +77,7 @@ fn main() -> Result<()> {
 
     // If user force output to be compressed even if input is not
     // add option to change compression of output
-    let mut format = niffler::compression::Format::No;
+    let mut format = niffler::send::compression::Format::No;
     if matches.contains_id("format") {
         format = utils::to_niffler_format(
             matches.get_one::<String>("format").unwrap(),
@@ -102,14 +91,6 @@ fn main() -> Result<()> {
     let raw_level = lv.parse::<i32>()?;
     let force = matches.get_flag("force");
 
-    // Exit if files does not have same types
-    if !reverse.is_empty()
-        && forward_filetype != (io::get_filetype(&Path::new(&reverse)))
-    {
-        writeln!(ehandle, "[ERROR] Mismatched type of file supplied: one is fasta while the other is fastq")?;
-        process::exit(exitcode::DATAERR);
-    }
-
     info!("sabreur v{} starting up!", crate_version!());
     if reverse.is_empty() {
         info!("You are in single-end mode");
@@ -118,7 +99,7 @@ fn main() -> Result<()> {
     }
 
     // Change file compression format here for files extension
-    if format != niffler::compression::Format::No {
+    if format != niffler::send::compression::Format::No {
         forward_format = format;
         info!(
             "Output files will be {} compressed",
@@ -151,308 +132,132 @@ fn main() -> Result<()> {
     let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
 
     // Main processing of reads
-    match forward_filetype {
-        io::FileType::Fasta => match reverse.is_empty() {
-            // single-end fasta mode
-            true => {
-                let ext = utils::to_compression_ext(forward_format);
-
-                // Read barcode data
-                for b_vec in barcode_fields.iter() {
-                    let file_path = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[1], ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path)?;
-
-                    barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
-                }
-
-                // Create unknown file
-                let unk_path = utils::create_relpath_from(
-                    [output, format!("{}{}", "unknown.fa", ext).as_str()]
+    match reverse.is_empty() {
+        // single-end fasta mode
+        true => {
+            let ext = utils::to_compression_ext(forward_format);
+            // Read barcode data
+            for b_vec in barcode_fields.iter() {
+                let file_path = utils::create_relpath_from(
+                    [output, format!("{}{}", b_vec[1], ext).as_str()]
                         .to_vec(),
                 );
-                let future_unk_path = unk_path.clone();
-
-                let unknown_file = fs::OpenOptions::new()
+                let file = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(unk_path)?;
-
-                barcode_info.insert(b"XXX", vec![unknown_file]);
-
-                // Demultiplexing
-                let (stats, is_unk_empty) = demux::se_fa_demux(
-                    forward,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
-
-                if !quiet {
-                    for (key, value) in stats.iter() {
-                        info!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        );
-                    }
-                }
-
-                if is_unk_empty {
-                    fs::remove_file(future_unk_path)?;
+                    .open(file_path)?;
+                barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
+            }
+            // Create unknown file
+            let unk_path = utils::create_relpath_from(
+                [output, format!("{}{}", "unknown.fa", ext).as_str()]
+                    .to_vec(),
+            );
+            let future_unk_path = unk_path.clone();
+            let unknown_file = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(unk_path)?;
+            barcode_info.insert(b"XXX", vec![unknown_file]);
+            // Demultiplexing
+            let (stats, is_unk_empty) = demux::se_demux(
+                forward,
+                format,
+                utils::to_niffler_level(raw_level),
+                &barcode_info,
+                mismatch,
+                &mut nb_records,
+            )?;
+            if !quiet {
+                for (key, value) in stats.iter() {
+                    info!(
+                        "{} records found for {} barcode",
+                        value,
+                        String::from_utf8_lossy(key)
+                    );
                 }
             }
-            // paired-end fasta mode
-            false => {
-                let mut reverse_format = io::which_format(&reverse);
-
-                if format != niffler::compression::Format::No {
-                    reverse_format = format;
-                }
-
-                let f_ext = utils::to_compression_ext(forward_format);
-                let r_ext = utils::to_compression_ext(reverse_format);
-
-                // Read barcode data
-                for b_vec in barcode_fields.iter() {
-                    let file_path1 = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[1], f_ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file_path2 = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[2], r_ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file1 = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path1)?;
-
-                    let file2 = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path2)?;
-
-                    barcode_info
-                        .insert(b_vec[0].as_bytes(), vec![file1, file2]);
-                }
-
-                // Create unknown files
-                let unk_path1 = utils::create_relpath_from(
-                    [output, format!("{}{}", "unknown_R1.fa", f_ext).as_str()]
-                        .to_vec(),
-                );
-                let unk_path2 = utils::create_relpath_from(
-                    [output, format!("{}{}", "unknown_R2.fa", r_ext).as_str()]
-                        .to_vec(),
-                );
-
-                let future_unk_path1 = unk_path1.clone();
-                let future_unk_path2 = unk_path2.clone();
-
-                let unknown_file1 = fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(unk_path1)?;
-
-                let unknown_file2 = fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(unk_path2)?;
-
-                barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
-
-                // Demultiplexing
-                let (stats, unk_status) = demux::pe_fa_demux(
-                    forward,
-                    &reverse,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
-
-                if !quiet {
-                    for (key, value) in stats.iter() {
-                        info!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        );
-                    }
-                }
-                if unk_status == *"truetrue" {
-                    fs::remove_file(future_unk_path1)?;
-                    fs::remove_file(future_unk_path2)?;
-                } else if unk_status == *"falsetrue" {
-                    fs::remove_file(future_unk_path2)?;
-                } else if unk_status == *"truefalse" {
-                    fs::remove_file(future_unk_path1)?;
-                }
+            if is_unk_empty {
+                fs::remove_file(future_unk_path)?;
             }
         },
-        io::FileType::Fastq => match reverse.is_empty() {
-            // single-end fastq mode
-            true => {
-                let ext = utils::to_compression_ext(forward_format);
-
-                // Read barcode data
-                for b_vec in barcode_fields.iter() {
-                    let file_path = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[1], ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path)
-                        .expect("Cannot open file");
-
-                    barcode_info.insert(b_vec[0].as_bytes(), vec![file]);
-                }
-
-                // Create unknown file
-                let mut unk_path = PathBuf::from("");
-                unk_path.push(output);
-                unk_path.push(format!("{}{}", "unknown.fq", ext));
-
-                let future_unk_path = unk_path.clone();
-
-                let unknown_file = fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(unk_path)?;
-
-                barcode_info.insert(b"XXX", vec![unknown_file]);
-
-                // Demultiplexing
-                let (stats, is_unk_empty) = demux::se_fq_demux(
-                    forward,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
-
-                if !quiet {
-                    for (key, value) in stats.iter() {
-                        info!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        );
-                    }
-                }
-
-                if is_unk_empty {
-                    fs::remove_file(future_unk_path)?;
-                }
+        // paired-end fasta mode
+        false => {
+            let mut reverse_format = io::which_format(&reverse);
+            if format != niffler::send::compression::Format::No {
+                reverse_format = format;
             }
-            // paired-end fastq mode
-            false => {
-                let mut reverse_format = io::which_format(&reverse);
-
-                if format != niffler::compression::Format::No {
-                    reverse_format = format;
-                }
-
-                let f_ext = utils::to_compression_ext(forward_format);
-                let r_ext = utils::to_compression_ext(reverse_format);
-
-                // Read barcode data
-                for b_vec in barcode_fields.iter() {
-                    let file_path1 = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[1], f_ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file_path2 = utils::create_relpath_from(
-                        [output, format!("{}{}", b_vec[2], r_ext).as_str()]
-                            .to_vec(),
-                    );
-
-                    let file1 = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path1)?;
-
-                    let file2 = fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(file_path2)?;
-
-                    barcode_info
-                        .insert(b_vec[0].as_bytes(), vec![file1, file2]);
-                }
-
-                // Create unknown files
-                let unk_path1 = utils::create_relpath_from(
-                    [output, format!("{}{}", "unknown_R1.fq", f_ext).as_str()]
+            let f_ext = utils::to_compression_ext(forward_format);
+            let r_ext = utils::to_compression_ext(reverse_format);
+            // Read barcode data
+            for b_vec in barcode_fields.iter() {
+                let file_path1 = utils::create_relpath_from(
+                    [output, format!("{}{}", b_vec[1], f_ext).as_str()]
                         .to_vec(),
                 );
-                let unk_path2 = utils::create_relpath_from(
-                    [output, format!("{}{}", "unknown_R2.fq", r_ext).as_str()]
+                let file_path2 = utils::create_relpath_from(
+                    [output, format!("{}{}", b_vec[2], r_ext).as_str()]
                         .to_vec(),
                 );
-
-                let future_unk_path1 = unk_path1.clone();
-                let future_unk_path2 = unk_path2.clone();
-
-                let unknown_file1 = fs::OpenOptions::new()
+                let file1 = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(unk_path1)?;
-
-                let unknown_file2 = fs::OpenOptions::new()
+                    .open(file_path1)?;
+                let file2 = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(unk_path2)?;
-
-                barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
-
-                // Demultiplexing
-                let (stats, unk_status) = demux::pe_fq_demux(
-                    forward,
-                    &reverse,
-                    format,
-                    utils::to_niffler_level(raw_level),
-                    &barcode_info,
-                    mismatch,
-                    &mut nb_records,
-                )?;
-
-                if !quiet {
-                    for (key, value) in stats.iter() {
-                        info!(
-                            "{} records found for {} barcode",
-                            value,
-                            String::from_utf8_lossy(key)
-                        );
-                    }
-                }
-                if unk_status == *"truetrue" {
-                    fs::remove_file(future_unk_path1)?;
-                    fs::remove_file(future_unk_path2)?;
-                } else if unk_status == *"falsetrue" {
-                    fs::remove_file(future_unk_path2)?;
-                } else if unk_status == *"truefalse" {
-                    fs::remove_file(future_unk_path1)?;
+                    .open(file_path2)?;
+                barcode_info
+                    .insert(b_vec[0].as_bytes(), vec![file1, file2]);
+            }
+            // Create unknown files
+            let unk_path1 = utils::create_relpath_from(
+                [output, format!("{}{}", "unknown_R1.fa", f_ext).as_str()]
+                    .to_vec(),
+            );
+            let unk_path2 = utils::create_relpath_from(
+                [output, format!("{}{}", "unknown_R2.fa", r_ext).as_str()]
+                    .to_vec(),
+            );
+            let future_unk_path1 = unk_path1.clone();
+            let future_unk_path2 = unk_path2.clone();
+            let unknown_file1 = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(unk_path1)?;
+            let unknown_file2 = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(unk_path2)?;
+            barcode_info.insert(b"XXX", vec![unknown_file1, unknown_file2]);
+            // Demultiplexing
+            let (stats, unk_status) = demux::pe_demux(
+                forward,
+                &reverse,
+                format,
+                utils::to_niffler_level(raw_level),
+                &barcode_info,
+                mismatch,
+                &mut nb_records,
+            )?;
+            if !quiet {
+                for (key, value) in stats.iter() {
+                    info!(
+                        "{} records found for {} barcode",
+                        value,
+                        String::from_utf8_lossy(key)
+                    );
                 }
             }
-        },
+            if unk_status == *"truetrue" {
+                fs::remove_file(future_unk_path1)?;
+                fs::remove_file(future_unk_path2)?;
+            } else if unk_status == *"falsetrue" {
+                fs::remove_file(future_unk_path2)?;
+            } else if unk_status == *"truefalse" {
+                fs::remove_file(future_unk_path1)?;
+            }
+        }
     }
 
     if !quiet {

@@ -12,7 +12,7 @@ pub fn build_app() -> Command {
         ColorChoice::Never
     };
 
-    let app = Command::new("sabreur")
+    Command::new("sabreur")
         .version(crate_version!())
         .override_usage("sabreur [options] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]")
         .color(clap_color_setting)
@@ -132,9 +132,7 @@ pub fn build_app() -> Command {
                 .short('q')
                 .long("quiet")
                 .action(ArgAction::SetTrue)
-        );
-
-    app
+        )
 }
 
 #[cfg(test)]

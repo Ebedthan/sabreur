@@ -13,14 +13,14 @@ keywords    = ["bioinformatics", "demultiplexing"]
 
 [dependencies]
 anyhow        = "1"
-bio           = "0.41"
 chrono        = "0.4"
 clap          = { version = "4.5", features = ["cargo"] }
 exitcode      = "1.1.2"
 fern          = { version = "0.6", features = ["colored"] }
 log           = "0.4"
-niffler       = "2.4"
-sysinfo       = "0.26"
+niffler       = "2.5"
+sysinfo       = "0.30"
+needletail    = { version = "0.5", features = ["compression"] }
 
 [dev-dependencies]
 criterion     = "0.3"
