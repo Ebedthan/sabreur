@@ -122,6 +122,9 @@ barcode2    barcode2_file1.fq   barcode2_file2.fq
 ...
 ```
 
+### Minimum supported Rust version
+`sabreur` minimum [Rust](https://www.rust-lang.org/) version is 1.74.1.
+
 ## Contributions
 Contributions are welcomed under the project [code of conduct](https://github.com/Ebedthan/sabreur#code-of-conduct).
 

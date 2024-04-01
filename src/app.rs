@@ -3,8 +3,8 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, Arg, ArgAction, ColorChoice, Command};
-use std::path::Path;
+use clap::{crate_version, value_parser, Arg, ArgAction, ColorChoice, Command};
+use std::path::{Path, PathBuf};
 
 pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
@@ -69,6 +69,7 @@ pub fn build_app() -> Command {
                 .short('m')
                 .long("mismatch")
                 .value_name("INT")
+                .value_parser(value_parser!(u8))
                 .default_value("0"),
         )
         .arg(
@@ -77,6 +78,7 @@ pub fn build_app() -> Command {
                 .short('o')
                 .long("out")
                 .value_name("DIR")
+                .value_parser(value_parser!(PathBuf))
                 .default_value("sabreur_out"),
         )
         .arg(
@@ -116,6 +118,7 @@ pub fn build_app() -> Command {
                 .long("level")
                 .short('l')
                 .value_name("INT")
+                .value_parser(value_parser!(u8))
                 .value_parser(clap::builder::PossibleValuesParser::new(["1", "2", "3", "4", "5", "6", "7", "8", "9"]))
                 .hide_possible_values(true)
                 .default_value("1"),

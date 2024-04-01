@@ -11,8 +11,7 @@ extern crate sysinfo;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{stderr, Write};
-use std::path::Path;
+use std::path::PathBuf;
 use std::process;
 use std::time::Instant;
 
@@ -35,44 +34,23 @@ fn main() -> anyhow::Result<()> {
     // Define command-line arguments ----------------------------------------
     let matches = app::build_app().get_matches_from(env::args_os());
 
-    // START ----------------------------------------------------------------
-    let stderr = stderr();
-    let mut ehandle = stderr.lock();
-
     // is --quiet option specified by the user?
     let quiet = matches.get_flag("quiet");
     utils::setup_logging(quiet)?; // Settting up logging
 
     // Read command-line arguments
-
-    // check forward file
     let forward = matches
         .get_one::<String>("FORWARD")
         .expect("input file is required");
 
     let mut forward_format = utils::which_format(forward);
 
-    // Check barcode file
     let barcode = matches
         .get_one::<String>("BARCODE")
         .expect("input barcode is required");
 
-    if !Path::new(barcode).exists() {
-        writeln!(ehandle, "error: barcode file is not readable")?;
-        process::exit(exitcode::DATAERR);
-    }
-
-    let mut reverse = String::new();
-    if matches.contains_id("REVERSE") {
-        reverse = matches
-            .get_one::<String>("REVERSE")
-            .expect("input file is not readable")
-            .to_string();
-    }
-
-    let output = matches.get_one::<String>("output").unwrap();
-    let mis = matches.get_one::<String>("mismatch").unwrap();
-    let mismatch = mis.parse::<u8>()?;
+    let output: &PathBuf = matches.get_one("output").unwrap();
+    let mismatch: u8 = *matches.get_one("mismatch").unwrap();
 
     // If user force output to be compressed even if input is not
     // add option to change compression of output
@@ -86,12 +64,11 @@ fn main() -> anyhow::Result<()> {
         })?;
     }
 
-    let lv = matches.get_one::<String>("level").unwrap();
-    let raw_level = lv.parse::<i32>()?;
+    let raw_level: u8 = *matches.get_one("level").unwrap();
     let force = matches.get_flag("force");
 
     info!("sabreur v{} starting up!", crate_version!());
-    if reverse.is_empty() {
+    if matches.contains_id("REVERSE") {
         info!("You are in single-end mode");
     } else {
         info!("You are in paired-end mode");
@@ -107,16 +84,16 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Handle output dir
-    let outdir_exists = Path::new(output).exists();
+    let outdir_exists = output.exists();
     if outdir_exists && !force {
-        error!("output folder '{}', already exists! change it using --out or use --force", output);
+        error!("output folder '{}', already exists! change it using --out or use --force", output.display());
         process::exit(exitcode::CANTCREAT);
     } else if outdir_exists && force {
-        info!("Reusing directory {}", output);
-        fs::remove_dir_all(Path::new(output)).with_context(|| anyhow!("Could not remove folder '{}'. Do you have permission to remove this folder?", output))?;
-        fs::create_dir(Path::new(output)).with_context(|| anyhow!("Could not create folder '{}'. Do you have permission to create this folder?", output))?;
+        info!("Reusing directory {}", output.display());
+        fs::remove_dir_all(output).with_context(|| anyhow!("Could not remove folder '{}'. Do you have permission to remove this folder?", output.display()))?;
+        fs::create_dir(output).with_context(|| anyhow!("Could not create folder '{}'. Do you have permission to create this folder?", output.display()))?;
     } else if !outdir_exists {
-        fs::create_dir(Path::new(output))?;
+        fs::create_dir(output)?;
     }
 
     // Read data from barcode file
@@ -131,14 +108,15 @@ fn main() -> anyhow::Result<()> {
     let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
     // Main processing of reads
-    match reverse.is_empty() {
+    match !matches.contains_id("REVERSE") {
         // single-end fasta mode
         true => {
             let ext = utils::to_compression_ext(forward_format);
             // Read barcode data
             for b_vec in barcode_fields.iter() {
                 let file_path = utils::create_relpath_from(
-                    [output, format!("{}{}", b_vec[1], ext).as_str()].to_vec(),
+                    &mut output.clone(),
+                    [format!("{}{}", b_vec[1], ext).as_str()].to_vec(),
                 );
                 let file = fs::OpenOptions::new()
                     .create(true)
@@ -148,7 +126,8 @@ fn main() -> anyhow::Result<()> {
             }
             // Create unknown file
             let unk_path = utils::create_relpath_from(
-                [output, format!("{}{}", "unknown.fa", ext).as_str()].to_vec(),
+                &mut output.clone(),
+                [format!("{}{}", "unknown.fa", ext).as_str()].to_vec(),
             );
             let future_unk_path = unk_path.clone();
             let unknown_file = fs::OpenOptions::new()
@@ -180,7 +159,8 @@ fn main() -> anyhow::Result<()> {
         }
         // paired-end fasta mode
         false => {
-            let mut reverse_format = utils::which_format(&reverse);
+            let reverse = matches.get_one::<String>("REVERSE").unwrap();
+            let mut reverse_format = utils::which_format(reverse);
             if format != niffler::send::compression::Format::No {
                 reverse_format = format;
             }
@@ -189,12 +169,12 @@ fn main() -> anyhow::Result<()> {
             // Read barcode data
             for b_vec in barcode_fields.iter() {
                 let file_path1 = utils::create_relpath_from(
-                    [output, format!("{}{}", b_vec[1], f_ext).as_str()]
-                        .to_vec(),
+                    &mut output.clone(),
+                    [format!("{}{}", b_vec[1], f_ext).as_str()].to_vec(),
                 );
                 let file_path2 = utils::create_relpath_from(
-                    [output, format!("{}{}", b_vec[2], r_ext).as_str()]
-                        .to_vec(),
+                    &mut output.clone(),
+                    [format!("{}{}", b_vec[2], r_ext).as_str()].to_vec(),
                 );
                 let file1 = fs::OpenOptions::new()
                     .create(true)
@@ -208,12 +188,12 @@ fn main() -> anyhow::Result<()> {
             }
             // Create unknown files
             let unk_path1 = utils::create_relpath_from(
-                [output, format!("{}{}", "unknown_R1.fa", f_ext).as_str()]
-                    .to_vec(),
+                &mut output.clone(),
+                [format!("{}{}", "unknown_R1.fa", f_ext).as_str()].to_vec(),
             );
             let unk_path2 = utils::create_relpath_from(
-                [output, format!("{}{}", "unknown_R2.fa", r_ext).as_str()]
-                    .to_vec(),
+                &mut output.clone(),
+                [format!("{}{}", "unknown_R2.fa", r_ext).as_str()].to_vec(),
             );
             let future_unk_path1 = unk_path1.clone();
             let future_unk_path2 = unk_path2.clone();
@@ -229,7 +209,7 @@ fn main() -> anyhow::Result<()> {
             // Demultiplexing
             let (stats, unk_status) = demux::pe_demux(
                 forward,
-                &reverse,
+                reverse,
                 format,
                 utils::to_niffler_level(raw_level),
                 &barcode_info,
@@ -263,7 +243,7 @@ fn main() -> anyhow::Result<()> {
         let minutes = (duration.as_secs() / 60) % 60;
         let hours = (duration.as_secs() / 60) / 60;
 
-        info!("Results are available in {}", output);
+        info!("Results are available in {}", output.display());
         info!("Walltime: {}h:{}m:{}s", hours, minutes, seconds,);
         info!("Used memory: {} bytes", sys.used_memory());
         info!("Thanks. Share. Come again!");

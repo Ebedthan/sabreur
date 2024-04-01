@@ -59,12 +59,10 @@ pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
     Ok(())
 }
 
-pub fn create_relpath_from(input: Vec<&str>) -> PathBuf {
-    let mut path = PathBuf::from("");
+pub fn create_relpath_from(basedir: &mut PathBuf, input: Vec<&str>) -> PathBuf {
+    input.iter().for_each(|x| basedir.push(x));
 
-    input.iter().for_each(|x| path.push(x));
-
-    path
+    basedir.to_path_buf()
 }
 
 // to_niffler_format function
@@ -94,7 +92,7 @@ pub fn to_compression_ext(
 }
 
 // Convert an integer to a niffler::Level
-pub fn to_niffler_level(int_level: i32) -> niffler::Level {
+pub fn to_niffler_level(int_level: u8) -> niffler::Level {
     match int_level {
         1 => niffler::Level::One,
         2 => niffler::Level::Two,
@@ -179,7 +177,10 @@ mod tests {
     #[test]
     fn test_create_relpath_from() {
         assert_eq!(
-            create_relpath_from(["path", "to", "file"].to_vec()),
+            create_relpath_from(
+                &mut PathBuf::from("path"),
+                ["to", "file"].to_vec()
+            ),
             PathBuf::from("path/to/file")
         );
     }
