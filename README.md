@@ -6,9 +6,6 @@
     <a href="https://github.com/Ebedthan/sabreur/actions?query=workflow%3A%22Continuous+Integration%22">
         <img src="https://img.shields.io/github/actions/workflow/status/Ebedthan/sabreur/ci.yml?style=flat&logo=GitHub%20Actions&branch=main">
     </a>
-    <a href="https://github.com/Ebedthan/sabreur/actions?query=workflow%3A%22Continuous+Deployment%22">
-        <img src="https://img.shields.io/github/actions/workflow/status/Ebedthan/sabreur/cd.yml?style=flat&logo=GitHub%20Actions&label=deploy&branch=main">
-    </a>
     <a href="https://crates.io/crates/sabreur">
         <img src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
     </a>
@@ -16,7 +13,7 @@
         <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
     </a>
     <a href="https://github.com/Ebedthan/sabreur">
-        <img src="https://img.shields.io/badge/rust-1.56.1%2B-blue.svg?maxAge=3600">
+        <img src="https://img.shields.io/badge/rust-1.74.1%2B-blue.svg?maxAge=3600">
     </a>
     <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
@@ -106,6 +103,17 @@ We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with 
 | [idemp](https://github.com/yhwu/idemp) | - | 211.571 ± 3.718 | -      | 366.247 ± 10.482  |
 | [sabre](https://github.com/najoshi/sabre) | 32.911 ± 2.411 | - | 109.470 ± 49.909 | -     |
 | **sabreur** | 10.843 ± 0.531| 93.840 ± 0.446    | 40.878 ± 13.743     | 187.533 ± 0.572   |
+
+
+
+A simple benchmark of the different compression format, zst being the fastest.
+| Command | Mean [s] | Min [s] | Max [s] | Relative |
+|:---|---:|---:|---:|---:|
+| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format zst` | 43.096 ± 1.547 | 41.179 | 46.878 | 1.00 |
+| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format bz2` | 94.049 ± 4.762 | 87.984 | 101.140 | 2.18 ± 0.14 |
+| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz (--format gz)` | 123.107 ± 1.748 | 120.529 | 125.166 | 2.86 ± 0.11 |
+| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format xz` | 285.692 ± 18.625 | 264.960 | 325.750 | 6.63 ± 0.49 |
+
 
 ## Note
 Sabreur use colored output in help, nevertheless sabreur honors [NO_COLORS](https://no-color.org/) environment variable.
