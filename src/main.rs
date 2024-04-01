@@ -16,19 +16,18 @@ use std::path::Path;
 use std::process;
 use std::time::Instant;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use clap::crate_version;
 use log::{error, info, warn};
 use sysinfo::System;
 
 mod app;
 mod demux;
-mod io;
 mod utils;
 
 // TODO: Check if supplied barcode file for se or pe is properly
 // formated before giving it to the demultiplexing function
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     let mut sys = System::new_all();
     sys.refresh_all();
     let startime = Instant::now();
@@ -51,7 +50,7 @@ fn main() -> Result<()> {
         .get_one::<String>("FORWARD")
         .expect("input file is required");
 
-    let mut forward_format = io::which_format(forward);
+    let mut forward_format = utils::which_format(forward);
 
     // Check barcode file
     let barcode = matches
@@ -73,7 +72,7 @@ fn main() -> Result<()> {
 
     let output = matches.get_one::<String>("output").unwrap();
     let mis = matches.get_one::<String>("mismatch").unwrap();
-    let mismatch = mis.parse::<i32>()?;
+    let mismatch = mis.parse::<u8>()?;
 
     // If user force output to be compressed even if input is not
     // add option to change compression of output
@@ -129,7 +128,7 @@ fn main() -> Result<()> {
         warn!("Barcode mismatch allowed: {}", mismatch);
     }
 
-    let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+    let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
     // Main processing of reads
     match reverse.is_empty() {
@@ -139,8 +138,7 @@ fn main() -> Result<()> {
             // Read barcode data
             for b_vec in barcode_fields.iter() {
                 let file_path = utils::create_relpath_from(
-                    [output, format!("{}{}", b_vec[1], ext).as_str()]
-                        .to_vec(),
+                    [output, format!("{}{}", b_vec[1], ext).as_str()].to_vec(),
                 );
                 let file = fs::OpenOptions::new()
                     .create(true)
@@ -150,8 +148,7 @@ fn main() -> Result<()> {
             }
             // Create unknown file
             let unk_path = utils::create_relpath_from(
-                [output, format!("{}{}", "unknown.fa", ext).as_str()]
-                    .to_vec(),
+                [output, format!("{}{}", "unknown.fa", ext).as_str()].to_vec(),
             );
             let future_unk_path = unk_path.clone();
             let unknown_file = fs::OpenOptions::new()
@@ -180,10 +177,10 @@ fn main() -> Result<()> {
             if is_unk_empty {
                 fs::remove_file(future_unk_path)?;
             }
-        },
+        }
         // paired-end fasta mode
         false => {
-            let mut reverse_format = io::which_format(&reverse);
+            let mut reverse_format = utils::which_format(&reverse);
             if format != niffler::send::compression::Format::No {
                 reverse_format = format;
             }
@@ -207,8 +204,7 @@ fn main() -> Result<()> {
                     .create(true)
                     .append(true)
                     .open(file_path2)?;
-                barcode_info
-                    .insert(b_vec[0].as_bytes(), vec![file1, file2]);
+                barcode_info.insert(b_vec[0].as_bytes(), vec![file1, file2]);
             }
             // Create unknown files
             let unk_path1 = utils::create_relpath_from(

@@ -23,7 +23,7 @@ sysinfo       = "0.30"
 needletail    = { version = "0.5", features = ["compression"] }
 
 [dev-dependencies]
-criterion     = "0.3"
+criterion     = "0.5"
 tempfile      = "3"
 triple_accel  = "0.4"
 

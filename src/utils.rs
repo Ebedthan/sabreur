@@ -3,17 +3,18 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use std::io;
-use std::path::PathBuf;
-
 extern crate chrono;
 extern crate fern;
 extern crate niffler;
 
-use anyhow::{anyhow, Result};
+use std::fs::File;
+use std::io;
+use std::path::PathBuf;
+
+use anyhow::anyhow;
 use fern::colors::ColoredLevelConfig;
 
-pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
+pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::default();
     let mut base_config = fern::Dispatch::new();
 
@@ -67,7 +68,9 @@ pub fn create_relpath_from(input: Vec<&str>) -> PathBuf {
 }
 
 // to_niffler_format function
-pub fn to_niffler_format(format: &str) -> Result<niffler::send::compression::Format> {
+pub fn to_niffler_format(
+    format: &str,
+) -> anyhow::Result<niffler::send::compression::Format> {
     match format {
         "gz" => Ok(niffler::send::compression::Format::Gzip),
         "bz2" => Ok(niffler::send::compression::Format::Bzip),
@@ -78,7 +81,9 @@ pub fn to_niffler_format(format: &str) -> Result<niffler::send::compression::For
 }
 
 // Convert niffler compression format to a file extension
-pub fn to_compression_ext(compression: niffler::send::compression::Format) -> String {
+pub fn to_compression_ext(
+    compression: niffler::send::compression::Format,
+) -> String {
     match compression {
         niffler::send::compression::Format::Gzip => ".gz".to_string(),
         niffler::send::compression::Format::Bzip => ".bz2".to_string(),
@@ -105,7 +110,7 @@ pub fn to_niffler_level(int_level: i32) -> niffler::Level {
 }
 
 // Split a &str at each \t
-pub fn split_by_tab(string: &str) -> Result<Vec<Vec<&str>>> {
+pub fn split_by_tab(string: &str) -> anyhow::Result<Vec<Vec<&str>>> {
     if string.contains('\t') {
         Ok(string
             .lines()
@@ -117,14 +122,53 @@ pub fn split_by_tab(string: &str) -> Result<Vec<Vec<&str>>> {
 }
 
 // Compare provided barcode with a sequence
-pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: i32) -> bool {
+pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
     // This wonderful line below compute the number of
     // character mismatch between two strings
     bc.iter()
         .zip(seq.iter())
-        .map(|(a, b)| (a != b) as i32)
-        .sum::<i32>()
+        .map(|(a, b)| (a != b) as u8)
+        .sum::<u8>()
         <= mismatch
+}
+
+pub fn which_format(filename: &str) -> niffler::send::compression::Format {
+    let raw_in = Box::new(io::BufReader::new(
+        File::open(filename).expect("file should be readable"),
+    ));
+
+    let (_, compression) = niffler::send::sniff(raw_in).expect("cannot");
+
+    compression
+}
+
+// Write to provided data to a fasta file in append mode
+pub fn write_seqs<'a>(
+    file: &'a std::fs::File,
+    compression: niffler::send::compression::Format,
+    record: &'a needletail::parser::SequenceRecord,
+    level: niffler::Level,
+) -> anyhow::Result<()> {
+    let mut handle =
+        niffler::send::get_writer(Box::new(file), compression, level)?;
+
+    match record.format() {
+        needletail::parser::Format::Fasta => needletail::parser::write_fasta(
+            record.id(),
+            &record.seq(),
+            &mut handle,
+            needletail::parser::LineEnding::Unix,
+        )?,
+        needletail::parser::Format::Fastq => needletail::parser::write_fastq(
+            record.id(),
+            &record.seq(),
+            record.qual(),
+            &mut handle,
+            needletail::parser::LineEnding::Unix,
+        )?,
+    }
+
+    Ok(())
 }
 
 // Tests --------------------------------------------------------------------
@@ -243,6 +287,54 @@ mod tests {
             to_compression_ext(niffler::send::compression::Format::Zstd),
             *".zst"
         );
-        assert_eq!(to_compression_ext(niffler::send::compression::Format::No), *"");
+        assert_eq!(
+            to_compression_ext(niffler::send::compression::Format::No),
+            *""
+        );
     }
+
+    #[test]
+    fn test_which_format() {
+        assert_eq!(
+            which_format("tests/test.fa.gz"),
+            niffler::send::compression::Format::Gzip
+        );
+        assert_eq!(
+            which_format("tests/reads_1.fa.bz2"),
+            niffler::send::compression::Format::Bzip
+        );
+        assert_eq!(
+            which_format("tests/reads_1.fa.xz"),
+            niffler::send::compression::Format::Lzma
+        );
+        assert_eq!(
+            which_format("tests/test.fq.zst"),
+            niffler::send::compression::Format::Zstd
+        );
+    }
+
+    /*
+    #[test]
+    fn test_write_to_fa_is_ok() {
+        let data = b">id_str desc\nATCGCCG";
+        let mut reader = noodles::fasta::Reader::new(&data[..]);
+        let record = reader.records().next().transpose().unwrap().unwrap();
+        let cmp = niffler::compression::Format::Gzip;
+        let file = tempfile::tempfile().expect("Cannot create temp file");
+
+        assert!((write_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
+
+        let mut tmpfile =
+            tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG")
+            .expect("Cannot write to tmp file");
+
+        let mut fa_records = File::open(tmpfile).map(BufReader::new).map(noodles::fasta::Reader::new).expect("Cannot read file");
+
+        while let Some(Ok(rec)) = fa_records.records().next() {
+            assert_eq!(rec.definition().name(), b"id_str");
+            assert_eq!(rec.definition().description().unwrap(), b"desc");
+            assert_eq!(rec.sequence().as_ref(), b"ATCGCCG");
+        }
+    }*/
 }

@@ -5,10 +5,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::Result;
-
-use crate::io::write_seqs;
-use crate::utils::bc_cmp;
+use crate::utils::{bc_cmp, write_seqs};
 
 pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 
@@ -18,9 +15,9 @@ pub fn se_demux<'a>(
     format: niffler::send::compression::Format,
     level: niffler::Level,
     barcode_data: &'a Barcode,
-    mismatch: i32,
-    nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<(&'a mut HashMap<&'a [u8], i32>, bool)> {
+    mismatch: u8,
+    nb_records: &'a mut HashMap<&'a [u8], u32>,
+) -> anyhow::Result<(&'a mut HashMap<&'a [u8], u32>, bool)> {
     // Get fasta file reader and compression mode
     let (reader, mut compression) = niffler::send::from_path(file)?;
 
@@ -50,8 +47,8 @@ pub fn se_demux<'a>(
         // let iter = my_vec.iter() to further stop
         // the find at first match.
         let mut iter = my_vec.iter();
-        let matched_barcode =
-            iter.find(|&&x| bc_cmp(x, &record.seq().as_ref()[..bc_len], mismatch));
+        let matched_barcode = iter
+            .find(|&&x| bc_cmp(x, &record.seq().as_ref()[..bc_len], mismatch));
 
         if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
@@ -76,7 +73,6 @@ pub fn se_demux<'a>(
     Ok((nb_records, is_unk_empty))
 }
 
-
 // Demultiplex a fasta::Record of paired-end file
 pub fn pe_demux<'a>(
     forward: &'a str,
@@ -84,18 +80,20 @@ pub fn pe_demux<'a>(
     format: niffler::send::compression::Format,
     level: niffler::Level,
     barcode_data: &'a Barcode,
-    mismatch: i32,
-    nb_records: &'a mut HashMap<&'a [u8], i32>,
-) -> Result<(&'a mut HashMap<&'a [u8], i32>, String)> {
+    mismatch: u8,
+    nb_records: &'a mut HashMap<&'a [u8], u32>,
+) -> anyhow::Result<(&'a mut HashMap<&'a [u8], u32>, String)> {
     // Get fasta files reader and compression modes
     let (forward_reader, mut compression) = niffler::send::from_path(forward)?;
 
     let (reverse_reader, _compression) = niffler::send::from_path(reverse)?;
 
     // Get records
-    let mut forward_fastx_reader = needletail::parse_fastx_reader(forward_reader)?;
+    let mut forward_fastx_reader =
+        needletail::parse_fastx_reader(forward_reader)?;
     //forward_records = forward_records.records();
-    let mut reverse_fastx_reader = needletail::parse_fastx_reader(reverse_reader)?;
+    let mut reverse_fastx_reader =
+        needletail::parse_fastx_reader(reverse_reader)?;
 
     // Clone barcode values in barcode_data structure for future iteration
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
@@ -170,16 +168,15 @@ pub fn pe_demux<'a>(
     Ok((nb_records, final_str))
 }
 
-
 // Tests ----------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_se_demux_1() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let unknown = tempfile::tempfile().expect("Cannot create temp file");
@@ -201,7 +198,7 @@ mod tests {
     #[test]
     fn test_se_demux_trim() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let unknown = tempfile::tempfile().expect("Cannot create temp file");
@@ -223,7 +220,7 @@ mod tests {
     #[test]
     fn test_se_demux_m1() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
@@ -247,7 +244,7 @@ mod tests {
     #[test]
     fn test_se_demux_m2() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
@@ -271,7 +268,7 @@ mod tests {
     #[test]
     fn test_se_demux_2() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
@@ -295,7 +292,7 @@ mod tests {
     #[test]
     fn test_se_demux_m3() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
@@ -319,7 +316,7 @@ mod tests {
     #[test]
     fn test_se_demux_m4() {
         let mut bc_data: Barcode = HashMap::new();
-        let mut nb_records: HashMap<&[u8], i32> = HashMap::new();
+        let mut nb_records: HashMap<&[u8], u32> = HashMap::new();
 
         let forward = tempfile::tempfile().expect("Cannot create temp file");
         let reverse = tempfile::tempfile().expect("Cannot create temp file");
