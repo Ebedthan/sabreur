@@ -62,9 +62,7 @@ pub fn create_relpath_from(basedir: &mut PathBuf, input: Vec<&str>) -> PathBuf {
 }
 
 // to_niffler_format function
-pub fn to_niffler_format(
-    format: &str,
-) -> anyhow::Result<niffler::send::compression::Format> {
+pub fn to_niffler_format(format: &str) -> anyhow::Result<niffler::send::compression::Format> {
     match format {
         "gz" => Ok(niffler::send::compression::Format::Gzip),
         "bz2" => Ok(niffler::send::compression::Format::Bzip),
@@ -75,9 +73,7 @@ pub fn to_niffler_format(
 }
 
 // Convert niffler compression format to a file extension
-pub fn to_compression_ext(
-    compression: niffler::send::compression::Format,
-) -> String {
+pub fn to_compression_ext(compression: niffler::send::compression::Format) -> String {
     match compression {
         niffler::send::compression::Format::Gzip => ".gz".to_string(),
         niffler::send::compression::Format::Bzip => ".bz2".to_string(),
@@ -143,8 +139,7 @@ pub fn write_seqs<'a>(
     record: &'a needletail::parser::SequenceRecord,
     level: niffler::Level,
 ) -> anyhow::Result<()> {
-    let mut handle =
-        niffler::send::get_writer(Box::new(file), compression, level)?;
+    let mut handle = niffler::send::get_writer(Box::new(file), compression, level)?;
 
     match record.format() {
         needletail::parser::Format::Fasta => needletail::parser::write_fasta(
@@ -173,10 +168,7 @@ mod tests {
     #[test]
     fn test_create_relpath_from() {
         assert_eq!(
-            create_relpath_from(
-                &mut PathBuf::from("path"),
-                ["to", "file"].to_vec()
-            ),
+            create_relpath_from(&mut PathBuf::from("path"), ["to", "file"].to_vec()),
             PathBuf::from("path/to/file")
         );
     }

@@ -48,12 +48,8 @@ fn main() -> anyhow::Result<()> {
     // add option to change compression of output
     let mut format = niffler::send::compression::Format::No;
     if matches.contains_id("format") {
-        format = utils::to_niffler_format(
-            matches.get_one::<String>("format").unwrap(),
-        )
-        .with_context(|| {
-            anyhow!("Could not convert compression format to niffler format")
-        })?;
+        format = utils::to_niffler_format(matches.get_one::<String>("format").unwrap())
+            .with_context(|| anyhow!("Could not convert compression format to niffler format"))?;
     }
 
     let raw_level: u8 = *matches.get_one("level").unwrap();
@@ -78,12 +74,25 @@ fn main() -> anyhow::Result<()> {
     // Handle output dir
     let outdir_exists = output.exists();
     if outdir_exists && !force {
-        error!("output folder '{}', already exists! change it using --out or use --force", output.display());
+        error!(
+            "output folder '{}', already exists! change it using --out or use --force",
+            output.display()
+        );
         process::exit(exitcode::CANTCREAT);
     } else if outdir_exists && force {
         info!("Reusing directory {}", output.display());
-        fs::remove_dir_all(output).with_context(|| anyhow!("Could not remove folder '{}'. Do you have permission to remove this folder?", output.display()))?;
-        fs::create_dir(output).with_context(|| anyhow!("Could not create folder '{}'. Do you have permission to create this folder?", output.display()))?;
+        fs::remove_dir_all(output).with_context(|| {
+            anyhow!(
+                "Could not remove folder '{}'. Do you have permission to remove this folder?",
+                output.display()
+            )
+        })?;
+        fs::create_dir(output).with_context(|| {
+            anyhow!(
+                "Could not create folder '{}'. Do you have permission to create this folder?",
+                output.display()
+            )
+        })?;
     } else if !outdir_exists {
         fs::create_dir(output)?;
     }

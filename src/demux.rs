@@ -47,8 +47,8 @@ pub fn se_demux<'a>(
         // let iter = my_vec.iter() to further stop
         // the find at first match.
         let mut iter = my_vec.iter();
-        let matched_barcode = iter
-            .find(|&&x| bc_cmp(x, &record.seq().as_ref()[..bc_len], mismatch));
+        let matched_barcode =
+            iter.find(|&&x| bc_cmp(x, &record.seq().as_ref()[..bc_len], mismatch));
 
         if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
@@ -89,11 +89,9 @@ pub fn pe_demux<'a>(
     let (reverse_reader, _compression) = niffler::send::from_path(reverse)?;
 
     // Get records
-    let mut forward_fastx_reader =
-        needletail::parse_fastx_reader(forward_reader)?;
+    let mut forward_fastx_reader = needletail::parse_fastx_reader(forward_reader)?;
     //forward_records = forward_records.records();
-    let mut reverse_fastx_reader =
-        needletail::parse_fastx_reader(reverse_reader)?;
+    let mut reverse_fastx_reader = needletail::parse_fastx_reader(reverse_reader)?;
 
     // Clone barcode values in barcode_data structure for future iteration
     let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
@@ -114,8 +112,7 @@ pub fn pe_demux<'a>(
     while let Some(r) = forward_fastx_reader.next() {
         let record = r.expect("invalid record");
         let mut iter = my_vec.iter();
-        let matched_barcode =
-            iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
+        let matched_barcode = iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
 
         if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
@@ -141,8 +138,7 @@ pub fn pe_demux<'a>(
     while let Some(r) = reverse_fastx_reader.next() {
         let record = r.expect("invalid record");
         let mut iter = my_vec.iter();
-        let matched_barcode =
-            iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
+        let matched_barcode = iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
 
         if let Some(i) = matched_barcode {
             nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
