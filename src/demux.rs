@@ -9,7 +9,7 @@ use crate::utils::{bc_cmp, write_seqs};
 
 pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 
-// Demultiplex a fasta::Record of single-end file
+/// A function to demultiplex a FASTA/FASTQ file
 pub fn se_demux<'a>(
     file: &'a str,
     format: niffler::send::compression::Format,
@@ -73,7 +73,7 @@ pub fn se_demux<'a>(
     Ok((nb_records, is_unk_empty))
 }
 
-// Demultiplex a fasta::Record of paired-end file
+/// A function to demultiplex a pair of FASTA/FASTQ files
 pub fn pe_demux<'a>(
     forward: &'a str,
     reverse: &'a str,

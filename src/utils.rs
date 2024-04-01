@@ -3,10 +3,6 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-extern crate chrono;
-extern crate fern;
-extern crate niffler;
-
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;

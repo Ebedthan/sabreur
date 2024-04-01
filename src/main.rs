@@ -3,11 +3,6 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-extern crate anyhow;
-extern crate clap;
-extern crate exitcode;
-extern crate sysinfo;
-
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -18,7 +13,6 @@ use std::time::Instant;
 use anyhow::{anyhow, Context};
 use clap::crate_version;
 use log::{error, info, warn};
-use sysinfo::System;
 
 mod app;
 mod demux;
@@ -27,8 +21,6 @@ mod utils;
 // TODO: Check if supplied barcode file for se or pe is properly
 // formated before giving it to the demultiplexing function
 fn main() -> anyhow::Result<()> {
-    let mut sys = System::new_all();
-    sys.refresh_all();
     let startime = Instant::now();
 
     // Define command-line arguments ----------------------------------------
@@ -68,7 +60,7 @@ fn main() -> anyhow::Result<()> {
     let force = matches.get_flag("force");
 
     info!("sabreur v{} starting up!", crate_version!());
-    if matches.contains_id("REVERSE") {
+    if !matches.contains_id("REVERSE") {
         info!("You are in single-end mode");
     } else {
         info!("You are in paired-end mode");
@@ -239,13 +231,16 @@ fn main() -> anyhow::Result<()> {
     if !quiet {
         // Finishing
         let duration = startime.elapsed();
-        let seconds = duration.as_secs() % 60;
-        let minutes = (duration.as_secs() / 60) % 60;
-        let hours = (duration.as_secs() / 60) / 60;
+        let miliseconds = duration.as_millis();
+        let seconds = duration.as_secs();
+        let minutes = duration.as_secs() / 60;
+        let hours = duration.as_secs() / 3600;
 
         info!("Results are available in {}", output.display());
-        info!("Walltime: {}h:{}m:{}s", hours, minutes, seconds,);
-        info!("Used memory: {} bytes", sys.used_memory());
+        info!(
+            "Walltime: {}h:{}m:{}s {}ms",
+            hours, minutes, seconds, miliseconds
+        );
         info!("Thanks. Share. Come again!");
     }
 

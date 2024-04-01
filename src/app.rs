@@ -119,7 +119,6 @@ pub fn build_app() -> Command {
                 .short('l')
                 .value_name("INT")
                 .value_parser(value_parser!(u8))
-                .value_parser(clap::builder::PossibleValuesParser::new(["1", "2", "3", "4", "5", "6", "7", "8", "9"]))
                 .hide_possible_values(true)
                 .default_value("1"),
         )
@@ -146,7 +145,7 @@ fn is_file(s: &str) -> Result<String, String> {
     if Path::new(s).is_file() {
         Ok(s.to_string())
     } else {
-        Err("Path does not exists".to_string())
+        Err("path does not exists".to_string())
     }
 }
 
