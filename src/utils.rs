@@ -55,8 +55,16 @@ pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
     Ok(())
 }
 
-pub fn create_relpath_from(basedir: &mut PathBuf, input: Vec<&str>) -> PathBuf {
-    input.iter().for_each(|x| basedir.push(x));
+pub fn create_relpath_from(
+    basedir: &mut PathBuf,
+    filename: &str,
+    extension: niffler::send::compression::Format,
+) -> PathBuf {
+    let ext = to_compression_ext(extension);
+    let mut mstr = String::with_capacity(filename.len() + ext.len());
+    mstr.push_str(filename);
+    mstr.push_str(&ext);
+    basedir.push(mstr);
 
     basedir.to_path_buf()
 }
@@ -168,8 +176,12 @@ mod tests {
     #[test]
     fn test_create_relpath_from() {
         assert_eq!(
-            create_relpath_from(&mut PathBuf::from("path"), ["to", "file"].to_vec()),
-            PathBuf::from("path/to/file")
+            create_relpath_from(
+                &mut PathBuf::from("path"),
+                "file",
+                niffler::send::compression::Format::Gzip
+            ),
+            PathBuf::from("path/file.gz")
         );
     }
 

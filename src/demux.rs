@@ -160,7 +160,10 @@ pub fn pe_demux<'a>(
             .expect("file name should be available");
         }
     }
-    let final_str = format!("{}{}", unk1_empty, unk2_empty);
+    let mut final_str = String::with_capacity(unk1_empty.len() + unk2_empty.len());
+    final_str.push_str(unk1_empty);
+    final_str.push_str(unk2_empty);
+
     Ok((nb_records, final_str))
 }
 
