@@ -1,24 +1,17 @@
-<p align="center">
-    <a href="https://github.com/Ebedthan/sabreur">
-        <img src="img/sabreur.png" width="300">
-    </a>
-    </br>
-    <a href="https://github.com/Ebedthan/sabreur/actions?query=workflow%3A%22Continuous+Integration%22">
-        <img src="https://img.shields.io/github/actions/workflow/status/Ebedthan/sabreur/ci.yml?style=flat&logo=GitHub%20Actions&branch=main">
-    </a>
-    <a href="https://crates.io/crates/sabreur">
-        <img src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
-    </a>
-    <a href="https://codecov.io/gh/Ebedthan/sabreur">
-        <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
-    </a>
-    <a href="https://github.com/Ebedthan/sabreur">
-        <img src="https://img.shields.io/badge/rust-1.74.1%2B-blue.svg?maxAge=3600">
-    </a>
-    <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
-        <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
-    </a>
-</p>
+# sabreur
+[![Continuous Integration](https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml)
+<a href="https://crates.io/crates/sabreur">
+    <img src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
+</a>
+<a href="https://codecov.io/gh/Ebedthan/sabreur">
+    <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
+</a>
+<a href="https://github.com/Ebedthan/sabreur">
+    <img src="https://img.shields.io/badge/rust-1.74.1%2B-blue.svg?maxAge=3600">
+</a>
+<a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
+</a>
 
 # About
 
@@ -137,3 +130,10 @@ Submit problems or requests to the [Issue Tracker](https://github.com/Ebedthan/s
 
 ## Code of conduct
 Please note that the sabreur project is released with a [Contributor Code of Conduct](https://github.com/Ebedthan/sabreur/blob/main/CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+
+
+<p align="center">
+    <a href="https://github.com/Ebedthan/sabreur">
+        <img src="img/sabreur.png" width="300">
+    </a>
+</p>
