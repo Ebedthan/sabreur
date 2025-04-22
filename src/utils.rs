@@ -113,11 +113,13 @@ pub fn split_by_tab(string: &str) -> anyhow::Result<Vec<Vec<&str>>> {
 
 // Compare provided barcode with a sequence
 pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
-    if bc.len() != seq.len() {
-        return false;
-    }
-
-    bc.iter().zip(seq.iter()).filter(|(a, b)| a != b).count() <= mismatch as usize
+    // This wonderful line below compute the number of
+    // character mismatch between two strings
+    bc.iter()
+        .zip(seq.iter())
+        .map(|(a, b)| (a != b) as u8)
+        .sum::<u8>()
+        <= mismatch
 }
 
 pub fn which_format(filename: &str) -> anyhow::Result<niffler::send::compression::Format> {
@@ -128,10 +130,10 @@ pub fn which_format(filename: &str) -> anyhow::Result<niffler::send::compression
 }
 
 // Write to provided data to a fasta file in append mode
-pub fn write_seqs<'a>(
-    file: &'a std::fs::File,
+pub fn write_seqs(
+    file: &std::fs::File,
     compression: niffler::send::compression::Format,
-    record: &'a needletail::parser::SequenceRecord,
+    record: &needletail::parser::SequenceRecord,
     level: niffler::Level,
 ) -> anyhow::Result<()> {
     let mut handle = niffler::send::get_writer(Box::new(file), compression, level)?;
@@ -139,18 +141,18 @@ pub fn write_seqs<'a>(
     match record.format() {
         needletail::parser::Format::Fasta => needletail::parser::write_fasta(
             record.id(),
-            &record.seq(),
+            record.seq().as_ref(),
             &mut handle,
             needletail::parser::LineEnding::Unix,
-        )?,
+        ),
         needletail::parser::Format::Fastq => needletail::parser::write_fastq(
             record.id(),
-            &record.seq(),
+            record.seq().as_ref(),
             record.qual(),
             &mut handle,
             needletail::parser::LineEnding::Unix,
-        )?,
-    }
+        ),
+    }?;
 
     Ok(())
 }
@@ -176,7 +178,6 @@ mod tests {
     fn test_bc_cmp_ok() {
         let seq = b"ATCGATCGATCG";
         let bc = b"ATCG";
-
         assert!(bc_cmp(bc, seq, 0));
     }
 
@@ -192,7 +193,6 @@ mod tests {
     fn test_bc_cmp_mismatch_ok() {
         let bc = b"AACG";
         let seq = b"ATCGATCGATCG";
-
         assert!(bc_cmp(bc, seq, 1));
     }
 
