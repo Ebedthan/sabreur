@@ -7,7 +7,7 @@
     <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
 </a>
 <a href="https://github.com/Ebedthan/sabreur">
-    <img src="https://img.shields.io/badge/rust-1.74.1%2B-blue.svg?maxAge=3600">
+    <img src="https://img.shields.io/badge/rust-1.78.0%2B-blue.svg?maxAge=3600">
 </a>
 <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
@@ -32,7 +32,7 @@ sabreur barcode.txt input_R1.fq.gz input_R2.fq.gz
 sabreur barcode.txt input.fq
 ```
 
-Input sequences files can be fasta or fastq, compressed or not. 
+Input sequences files can be fasta or fastq, compressed or not.
 The supported compression format are gz, bz2, xz and zst.
 Just give the sequences, sabreur know how to handle it!
 
@@ -109,8 +109,6 @@ A simple benchmark of the different compression format, zst being the fastest.
 
 
 ## Note
-Sabreur use colored output in help, nevertheless sabreur honors [NO_COLORS](https://no-color.org/) environment variable.
-
 Sabreur use a special barcode tab-delimited file format in the form:
 
 ```
@@ -120,7 +118,7 @@ barcode2    barcode2_file1.fq   barcode2_file2.fq
 ```
 
 ### Minimum supported Rust version
-`sabreur` minimum [Rust](https://www.rust-lang.org/) version is 1.74.1.
+`sabreur` minimum [Rust](https://www.rust-lang.org/) version is 1.78.0.
 
 ## Contributions
 Contributions are welcomed under the project [code of conduct](https://github.com/Ebedthan/sabreur#code-of-conduct).
