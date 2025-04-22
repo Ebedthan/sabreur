@@ -107,19 +107,17 @@ pub fn split_by_tab(string: &str) -> anyhow::Result<Vec<Vec<&str>>> {
             .map(|line| line.split('\t').collect())
             .collect())
     } else {
-        Err(anyhow!("string is not tab-delimited"))
+        Err(anyhow!("Input string is not tab-delimited"))
     }
 }
 
 // Compare provided barcode with a sequence
 pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
-    // This wonderful line below compute the number of
-    // character mismatch between two strings
-    bc.iter()
-        .zip(seq.iter())
-        .map(|(a, b)| (a != b) as u8)
-        .sum::<u8>()
-        <= mismatch
+    if bc.len() != seq.len() {
+        return false;
+    }
+
+    bc.iter().zip(seq.iter()).filter(|(a, b)| a != b).count() <= mismatch as usize
 }
 
 pub fn which_format(filename: &str) -> niffler::send::compression::Format {
