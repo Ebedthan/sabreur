@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     utils::setup_logging(cli.quiet)?; // Settting up logging
-    let forward_format = utils::which_format(&cli.forward);
+    let forward_format = utils::which_format(&cli.forward)?;
     let mut output_format = forward_format;
     let mismatch = cli.mismatch;
     let raw_level = cli.level;
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
 
     // Main processing
     if let Some(reverse_path) = &cli.reverse {
-        let mut reverse_format = utils::which_format(reverse_path);
+        let mut reverse_format = utils::which_format(reverse_path)?;
         if output_format != niffler::send::compression::Format::No {
             reverse_format = output_format;
         }

@@ -120,14 +120,11 @@ pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
     bc.iter().zip(seq.iter()).filter(|(a, b)| a != b).count() <= mismatch as usize
 }
 
-pub fn which_format(filename: &str) -> niffler::send::compression::Format {
-    let raw_in = Box::new(io::BufReader::new(
-        File::open(filename).expect("file should be readable"),
-    ));
-
-    let (_, compression) = niffler::send::sniff(raw_in).expect("cannot");
-
-    compression
+pub fn which_format(filename: &str) -> anyhow::Result<niffler::send::compression::Format> {
+    let file = File::open(filename)?;
+    let raw_in = Box::new(io::BufReader::new(file));
+    let (_, compression) = niffler::send::sniff(raw_in)?;
+    Ok(compression)
 }
 
 // Write to provided data to a fasta file in append mode
@@ -283,19 +280,19 @@ mod tests {
     #[test]
     fn test_which_format() {
         assert_eq!(
-            which_format("tests/test.fa.gz"),
+            which_format("tests/test.fa.gz").unwrap(),
             niffler::send::compression::Format::Gzip
         );
         assert_eq!(
-            which_format("tests/reads_1.fa.bz2"),
+            which_format("tests/reads_1.fa.bz2").unwrap(),
             niffler::send::compression::Format::Bzip
         );
         assert_eq!(
-            which_format("tests/reads_1.fa.xz"),
+            which_format("tests/reads_1.fa.xz").unwrap(),
             niffler::send::compression::Format::Lzma
         );
         assert_eq!(
-            which_format("tests/test.fq.zst"),
+            which_format("tests/test.fq.zst").unwrap(),
             niffler::send::compression::Format::Zstd
         );
     }
