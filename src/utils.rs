@@ -1,14 +1,16 @@
-// Copyright 2021-2024 Anicet Ebou.
+// Copyright 2021-2025 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
 use std::fs::File;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 use fern::colors::ColoredLevelConfig;
+
+use crate::cli;
 
 pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::default();
@@ -56,27 +58,27 @@ pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
 }
 
 pub fn create_relpath_from(
-    basedir: &mut PathBuf,
+    basedir: &Path,
     filename: &str,
     extension: niffler::send::compression::Format,
 ) -> PathBuf {
     let ext = to_compression_ext(extension);
-    let mut mstr = String::with_capacity(filename.len() + ext.len());
-    mstr.push_str(filename);
-    mstr.push_str(&ext);
-    basedir.push(mstr);
+    let mut full_filename = String::with_capacity(filename.len() + ext.len());
+    full_filename.push_str(filename);
+    full_filename.push_str(&ext);
 
-    basedir.to_path_buf()
+    basedir.join(full_filename)
 }
 
 // to_niffler_format function
-pub fn to_niffler_format(format: &str) -> anyhow::Result<niffler::send::compression::Format> {
+pub fn to_niffler_format(
+    format: cli::CompressionFormat,
+) -> anyhow::Result<niffler::send::compression::Format> {
     match format {
-        "gz" => Ok(niffler::send::compression::Format::Gzip),
-        "bz2" => Ok(niffler::send::compression::Format::Bzip),
-        "xz" => Ok(niffler::send::compression::Format::Lzma),
-        "zst" => Ok(niffler::send::compression::Format::Zstd),
-        _ => Ok(niffler::send::compression::Format::No),
+        cli::CompressionFormat::Gz => Ok(niffler::send::compression::Format::Gzip),
+        cli::CompressionFormat::Bz2 => Ok(niffler::send::compression::Format::Bzip),
+        cli::CompressionFormat::Xz => Ok(niffler::send::compression::Format::Lzma),
+        cli::CompressionFormat::Zst => Ok(niffler::send::compression::Format::Zstd),
     }
 }
 
@@ -249,24 +251,20 @@ mod tests {
     #[test]
     fn test_to_niffler_format() {
         assert_eq!(
-            to_niffler_format("gz").unwrap(),
+            to_niffler_format(cli::CompressionFormat::Gz).unwrap(),
             niffler::send::compression::Format::Gzip
         );
         assert_eq!(
-            to_niffler_format("xz").unwrap(),
+            to_niffler_format(cli::CompressionFormat::Xz).unwrap(),
             niffler::send::compression::Format::Lzma
         );
         assert_eq!(
-            to_niffler_format("bz2").unwrap(),
+            to_niffler_format(cli::CompressionFormat::Bz2).unwrap(),
             niffler::send::compression::Format::Bzip
         );
         assert_eq!(
-            to_niffler_format("zst").unwrap(),
+            to_niffler_format(cli::CompressionFormat::Zst).unwrap(),
             niffler::send::compression::Format::Zstd
-        );
-        assert_eq!(
-            to_niffler_format("txt").unwrap(),
-            niffler::send::compression::Format::No
         );
     }
 

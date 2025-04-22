@@ -1,38 +1,44 @@
 [package]
-name    = "sabreur"
+name = "sabreur"
 version = "0.6.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
-exclude     = ["CODE_OF_CONDUCT.md", "tests/*", "benches/*", ".github/*", ".cargo/*"]
+exclude = [
+    "CODE_OF_CONDUCT.md",
+    "tests/*",
+    "benches/*",
+    ".github/*",
+    ".cargo/*",
+]
 description = "sabreur is a barcode demultiplexing tool for fasta and fastq files"
-homepage    = "https://github.com/Ebedthan/sabreur"
-readme      = "README.md"
-license     = "MIT"
-categories  = ["command-line-utilities"]
-keywords    = ["bioinformatics", "demultiplexing"] 
+homepage = "https://github.com/Ebedthan/sabreur"
+readme = "README.md"
+license = "MIT"
+categories = ["command-line-utilities"]
+keywords = ["bioinformatics", "demultiplexing"]
 
 [dependencies]
-anyhow        = "1"
-chrono        = "0.4"
-clap          = { version = "4.5", features = ["cargo"] }
-exitcode      = "1.1.2"
-fern          = { version = "0.6", features = ["colored"] }
-log           = "0.4"
-niffler       = "2.5"
-needletail    = { version = "0.5", features = ["compression"] }
+anyhow = "1"
+chrono = "0.4"
+clap = { version = "4.5.37", features = ["derive"] }
+exitcode = "1.1.2"
+fern = { version = "0.6", features = ["colored"] }
+log = "0.4"
+niffler = "2.5"
+needletail = { version = "0.5", features = ["compression"] }
 
 [dev-dependencies]
-criterion     = "0.5"
-tempfile      = "3"
-triple_accel  = "0.4"
+criterion = "0.5"
+tempfile = "3"
+triple_accel = "0.4"
 
 [profile.release]
-opt-level       = 3
-debug           = true
+opt-level = 3
+debug = true
 overflow-checks = false
-lto             = 'thin'
-panic           = 'abort'
-incremental     = false
+lto = 'thin'
+panic = 'abort'
+incremental = false
 
 [[bin]]
 name = "sabreur"
