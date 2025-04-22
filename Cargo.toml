@@ -3,13 +3,6 @@ name = "sabreur"
 version = "0.7.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
-exclude = [
-    "CODE_OF_CONDUCT.md",
-    "tests/*",
-    "benches/*",
-    ".github/*",
-    ".cargo/*",
-]
 description = "sabreur is a barcode demultiplexing tool for fasta and fastq files"
 homepage = "https://github.com/Ebedthan/sabreur"
 repository = "https://github.com/Ebedthan/sabreur"
