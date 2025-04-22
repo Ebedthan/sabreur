@@ -1,6 +1,6 @@
 [package]
 name = "sabreur"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = [
@@ -12,6 +12,7 @@ exclude = [
 ]
 description = "sabreur is a barcode demultiplexing tool for fasta and fastq files"
 homepage = "https://github.com/Ebedthan/sabreur"
+repository = "https://github.com/Ebedthan/sabreur"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
@@ -39,6 +40,11 @@ overflow-checks = false
 lto = 'thin'
 panic = 'abort'
 incremental = false
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
 
 [[bin]]
 name = "sabreur"

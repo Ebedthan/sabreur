@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     // Determine mode
     let is_pe = cli.reverse.is_some();
     info!(
-        "sabreur v0.6 starting up in {} mode",
+        "sabreur v0.7 starting up in {} mode",
         if is_pe { "paired-end" } else { "single-end" }
     );
 
