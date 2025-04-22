@@ -79,85 +79,51 @@ pub fn pe_demux<'a>(
 ) -> anyhow::Result<(&'a mut HashMap<&'a [u8], u32>, String)> {
     // Get fasta files reader and compression modes
     let (forward_reader, mut compression) = niffler::send::from_path(forward)?;
-
-    let (reverse_reader, _compression) = niffler::send::from_path(reverse)?;
+    let (reverse_reader, _) = niffler::send::from_path(reverse)?;
 
     // Get records
     let mut forward_fastx_reader = needletail::parse_fastx_reader(forward_reader)?;
-    //forward_records = forward_records.records();
     let mut reverse_fastx_reader = needletail::parse_fastx_reader(reverse_reader)?;
 
-    // Clone barcode values in barcode_data structure for future iteration
-    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
+    // Get barcode information once
+    let barcodes: Vec<&[u8]> = barcode_data.keys().map(|x| *x).collect();
+    let bc_len = barcodes[0].len();
+    let unknown_key = "XXX".as_bytes();
+    let unknown_files = barcode_data.get(unknown_key).unwrap();
 
-    // Get barcode length
-    let bc_len = my_vec[0].len();
-
-    // Initialize unknown files as empty
-    let mut unk1_empty = "true";
-    let mut unk2_empty = "true";
-
-    // Change output compression format to user wanted compression
-    // format if specified by --format option
+    // Change output compression format if specified
     if format != niffler::send::compression::Format::No {
         compression = format;
     }
 
-    while let Some(r) = forward_fastx_reader.next() {
-        let record = r.expect("invalid record");
-        let mut iter = my_vec.iter();
-        let matched_barcode = iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
-
-        if let Some(i) = matched_barcode {
-            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_seqs(
-                &barcode_data.get(i).unwrap()[0],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
+    // Process forward reads
+    let mut unk1_empty = true;
+    while let Some(Ok(record)) = forward_fastx_reader.next() {
+        let seq_slice = &record.seq()[..bc_len];
+        if let Some(i) = barcodes.iter().find(|&&x| bc_cmp(x, seq_slice, mismatch)) {
+            *nb_records.entry(i).or_insert(0) += 1;
+            write_seqs(&barcode_data[i][0], compression, &record, level)?;
         } else {
-            unk1_empty = "false";
-            write_seqs(
-                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
+            unk1_empty = false;
+            write_seqs(&unknown_files[0], compression, &record, level)?;
         }
     }
 
-    while let Some(r) = reverse_fastx_reader.next() {
-        let record = r.expect("invalid record");
-        let mut iter = my_vec.iter();
-        let matched_barcode = iter.find(|&&x| bc_cmp(x, &record.seq()[..bc_len], mismatch));
-
-        if let Some(i) = matched_barcode {
-            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_seqs(
-                &barcode_data.get(i).unwrap()[1],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
+    // Process reverse reads
+    let mut unk2_empty = true;
+    while let Some(Ok(record)) = reverse_fastx_reader.next() {
+        let seq_slice = &record.seq()[..bc_len];
+        if let Some(i) = barcodes.iter().find(|&&x| bc_cmp(x, seq_slice, mismatch)) {
+            *nb_records.entry(i).or_insert(0) += 1;
+            write_seqs(&barcode_data[i][1], compression, &record, level)?;
         } else {
-            unk2_empty = "false";
-            write_seqs(
-                &barcode_data.get(&"XXX".as_bytes()).unwrap()[1],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
+            unk2_empty = false;
+            write_seqs(&unknown_files[1], compression, &record, level)?;
         }
     }
-    let mut final_str = String::with_capacity(unk1_empty.len() + unk2_empty.len());
-    final_str.push_str(unk1_empty);
-    final_str.push_str(unk2_empty);
 
+    // Create result string more efficiently
+    let final_str = format!("{}{}", unk1_empty, unk2_empty);
     Ok((nb_records, final_str))
 }
 
