@@ -86,7 +86,7 @@ pub fn pe_demux<'a>(
     let mut reverse_fastx_reader = needletail::parse_fastx_reader(reverse_reader)?;
 
     // Get barcode information once
-    let barcodes: Vec<&[u8]> = barcode_data.keys().map(|x| *x).collect();
+    let barcodes: Vec<&[u8]> = barcode_data.keys().copied().collect();
     let bc_len = barcodes[0].len();
     let unknown_key = "XXX".as_bytes();
     let unknown_files = barcode_data.get(unknown_key).unwrap();
