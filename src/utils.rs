@@ -73,13 +73,13 @@ pub fn to_niffler_format(
 }
 
 // Convert niffler compression format to a file extension
-pub fn to_compression_ext(compression: niffler::send::compression::Format) -> String {
+pub fn to_compression_ext(compression: niffler::send::compression::Format) -> &'static str {
     match compression {
-        niffler::send::compression::Format::Gzip => ".gz".to_string(),
-        niffler::send::compression::Format::Bzip => ".bz2".to_string(),
-        niffler::send::compression::Format::Lzma => ".xz".to_string(),
-        niffler::send::compression::Format::Zstd => ".zst".to_string(),
-        niffler::send::compression::Format::No => "".to_string(),
+        niffler::send::compression::Format::Gzip => ".gz",
+        niffler::send::compression::Format::Bzip => ".bz2",
+        niffler::send::compression::Format::Lzma => ".xz",
+        niffler::send::compression::Format::Zstd => ".zst",
+        niffler::send::compression::Format::No => "",
     }
 }
 
@@ -262,23 +262,23 @@ mod tests {
     fn test_to_compression_ext() {
         assert_eq!(
             to_compression_ext(niffler::send::compression::Format::Gzip),
-            *".gz"
+            ".gz"
         );
         assert_eq!(
             to_compression_ext(niffler::send::compression::Format::Lzma),
-            *".xz"
+            ".xz"
         );
         assert_eq!(
             to_compression_ext(niffler::send::compression::Format::Bzip),
-            *".bz2"
+            ".bz2"
         );
         assert_eq!(
             to_compression_ext(niffler::send::compression::Format::Zstd),
-            *".zst"
+            ".zst"
         );
         assert_eq!(
             to_compression_ext(niffler::send::compression::Format::No),
-            *""
+            ""
         );
     }
 
