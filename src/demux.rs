@@ -12,62 +12,56 @@ pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 /// A function to demultiplex a FASTA/FASTQ file
 pub fn se_demux<'a>(
     file: &'a str,
-    format: niffler::send::compression::Format,
+    mut format: niffler::send::compression::Format,
     level: niffler::Level,
-    barcode_data: &'a Barcode,
+    barcode_data: &'a Barcode<'a>,
     mismatch: u8,
     nb_records: &'a mut HashMap<&'a [u8], u32>,
 ) -> anyhow::Result<(&'a mut HashMap<&'a [u8], u32>, bool)> {
-    // Get fasta file reader and compression mode
-    let (reader, mut compression) = niffler::send::from_path(file)?;
+    // Prepare decompression stream
+    let (reader, original_format) = niffler::send::from_path(file)?;
+    let mut reader = needletail::parse_fastx_reader(reader)?;
 
-    // Get records
-    let mut fastx_reader = needletail::parse_fastx_reader(reader)?;
-
-    // Clone barcode values in barcode_data structure for future iteration
-    let my_vec = barcode_data.keys().cloned().collect::<Vec<_>>();
-
-    // Get barcode length
-    let bc_len = my_vec[0].len();
-
-    // Initialize unknown file as empty
-    let mut is_unk_empty = true;
-
-    // Change output compression format to user wanted compression
-    // format if specified by --format option
-    if format != niffler::send::compression::Format::No {
-        compression = format;
+    // Use user-specified compression format if set
+    if format == niffler::send::compression::Format::No {
+        format = original_format;
     }
 
-    while let Some(r) = fastx_reader.next() {
-        let record = r.expect("invalid record");
+    // Assume all barcodes have same length
+    let Some(&first_key) = barcode_data.keys().next() else {
+        return Err(anyhow::anyhow!("Barcode data is empty"));
+    };
+    let bc_len = first_key.len();
 
-        // Match sequence and barcode with mismatch
-        // and return matched barcode. We first use
-        // let iter = my_vec.iter() to further stop
-        // the find at first match.
-        let mut iter = my_vec.iter();
-        let matched_barcode =
-            iter.find(|&&x| bc_cmp(x, &record.seq().as_ref()[..bc_len], mismatch));
+    // Cache barcode keys (avoid repeated hashmap lookups)
+    let barcodes: Vec<&[u8]> = barcode_data.keys().copied().collect();
 
-        if let Some(i) = matched_barcode {
-            nb_records.entry(i).and_modify(|e| *e += 1).or_insert(1);
-            write_seqs(
-                &barcode_data.get(i).unwrap()[0],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
-        } else {
-            is_unk_empty = false;
-            write_seqs(
-                &barcode_data.get(&"XXX".as_bytes()).unwrap()[0],
-                compression,
-                &record,
-                level,
-            )
-            .expect("file name should be available");
+    // Track whether unknown file has data
+    let mut is_unk_empty = true;
+
+    // Get handle for unkwnon barcode file
+    let unknown_writer = barcode_data
+        .get(b"XXX".as_ref())
+        .ok_or_else(|| anyhow::anyhow!("Missing 'XXX' fallback barcode entry in barcode_data"))?[0]
+        .try_clone()?;
+
+    // Process each record
+    while let Some(record) = reader.next() {
+        let record = record?;
+
+        let matched = barcodes
+            .iter()
+            .find(|&&bc| bc_cmp(bc, &record.seq()[..bc_len], mismatch));
+
+        match matched {
+            Some(&bc) => {
+                *nb_records.entry(bc).or_insert(0) += 1;
+                write_seqs(&barcode_data[bc][0], format, &record, level)?;
+            }
+            None => {
+                is_unk_empty = false;
+                write_seqs(&unknown_writer, format, &record, level)?;
+            }
         }
     }
     Ok((nb_records, is_unk_empty))
