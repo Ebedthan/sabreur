@@ -12,20 +12,14 @@ use fern::colors::ColoredLevelConfig;
 
 use crate::cli;
 
-pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
+pub fn setup_logging(quiet: bool) -> anyhow::Result<()> {
     let colors = ColoredLevelConfig::default();
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match quiet {
-        // if user required quietness let only output warning messages
-        // or messages more severe than warnings
-        true => base_config.level(log::LevelFilter::Warn),
-        // if quietness is not specified which implies verbosity is allowed
-        // output
-        false => base_config.level(log::LevelFilter::Debug),
+    let level_filter = if quiet {
+        log::LevelFilter::Warn
+    } else {
+        log::LevelFilter::Debug
     };
 
-    // Separate file config so we can include year, month and day in file logs
     let file_config = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -49,7 +43,8 @@ pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
         })
         .chain(io::stdout());
 
-    base_config
+    fern::Dispatch::new()
+        .level(level_filter)
         .chain(file_config)
         .chain(stdout_config)
         .apply()?;
