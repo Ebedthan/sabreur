@@ -57,12 +57,7 @@ pub fn create_relpath_from(
     filename: &str,
     extension: niffler::send::compression::Format,
 ) -> PathBuf {
-    let ext = to_compression_ext(extension);
-    let mut full_filename = String::with_capacity(filename.len() + ext.len());
-    full_filename.push_str(filename);
-    full_filename.push_str(&ext);
-
-    basedir.join(full_filename)
+    basedir.join(format!("{}{}", filename, to_compression_ext(extension)))
 }
 
 // to_niffler_format function
