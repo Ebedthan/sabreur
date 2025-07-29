@@ -166,7 +166,7 @@ mod tests {
     fn test_create_relpath_from() {
         assert_eq!(
             create_relpath_from(
-                &mut PathBuf::from("path"),
+                &PathBuf::from("path"),
                 "file",
                 niffler::send::compression::Format::Gzip
             ),
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn test_split_by_tab_not_ok() {
         let mystring = "HelloWorldEarth\nBrianwasthere";
-        assert_eq!(split_by_tab(mystring).is_err(), true);
+        assert!(split_by_tab(mystring).is_err());
     }
 
     #[test]

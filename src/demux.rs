@@ -123,7 +123,7 @@ pub fn pe_demux<'a>(
     }
 
     // Create result string more efficiently
-    let final_str = format!("{}{}", unk1_empty, unk2_empty);
+    let final_str = format!("{unk1_empty}{unk2_empty}");
     Ok((nb_records, final_str))
 }
 

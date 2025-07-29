@@ -4,9 +4,6 @@
   <a href="https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml">
     <img alt="CI" src="https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml/badge.svg">
   </a>
-  <a href="https://crates.io/crates/sabreur">
-    <img alt="Crates.io" src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
-  </a>
   <a href="https://codecov.io/gh/Ebedthan/sabreur">
     <img alt="Coverage" src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
   </a>
@@ -19,10 +16,8 @@
 </p>
 
 <p align="center">
-  <img src="img/sabreur.png" alt="sabreur logo" width="300">
+  <img src="img/sabreur.png" alt="sabreur logo" width="150">
 </p>
-
----
 
 ## 🔎 About
 
@@ -35,8 +30,6 @@
 It uses a barcode file to match reads and dispatches each to the corresponding output. Reads with unknown barcodes go into a separate file.
 
 Powered by [niffler](https://github.com/luizirber/niffler) for seamless compression support.
-
----
 
 ## 🚀 Usage
 
@@ -76,33 +69,30 @@ OPTIONS:
 
 ## 📦 Installation
 
-
-## Requirements
+### Requirements
 - [Rust](https://rust-lang.org) in stable channel
 - libgz for gz file support
 - liblzma for xz file support
 - libbzip2 for bzip2 file support
 - zstd for zstd file support
 
+### 🛠️ From Source (via Cargo)
 
-## Installation
-
-## From crates.io
-If you already have a functional rust installation do:
-
-```
-cargo install sabreur
-```
-
-## From source
-```
+```bash
 git clone https://github.com/Ebedthan/sabreur.git
 cd sabreur
-
-cargo build --release
-cargo test
-cargo install --path .
+cargo install --path . --root ~/.cargo
+sabreur --help
 ```
+
+### 📁 Prebuilt Binaries
+
+Download binaries for your platform from the [releases page](https://github.com/Ebedthan/sabreur/releases):
+
+* macOS (Apple Silicon): [Download](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-aarch64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-aarch64-apple-darwin.tar.xz.sh256)
+* macOS (Intel): [Download](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-apple-darwin.tar.xz.sha256)
+* Linux (x86\_64): [Download](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-unknown-linux-gnu.tar.xz) • [Checksum](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-unknown-linux-gnu.tar.xz.sha256)
+* Windows (x86\_64): [Download](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-pc-windows-msvc.zip) • [Checksum](https://github.com/Ebedthan/sabreur/releases/download/v0.7.0/sabreur-v0.7.0-x86_64-pc-windows-msvc.zip.sha256)
 
 ## Benchmark
 
