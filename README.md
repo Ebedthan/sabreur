@@ -1,43 +1,58 @@
 # sabreur
-[![Continuous Integration](https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml)
-<a href="https://crates.io/crates/sabreur">
-    <img src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
-</a>
-<a href="https://codecov.io/gh/Ebedthan/sabreur">
-    <img src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
-</a>
-<a href="https://github.com/Ebedthan/sabreur">
-    <img src="https://img.shields.io/badge/rust-1.78.0%2B-blue.svg?maxAge=3600">
-</a>
-<a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
-</a>
 
-# About
+<p align="center">
+  <a href="https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/Ebedthan/sabreur/actions/workflows/ci.yml/badge.svg">
+  </a>
+  <a href="https://crates.io/crates/sabreur">
+    <img alt="Crates.io" src="https://img.shields.io/crates/v/sabreur.svg?style=flat">
+  </a>
+  <a href="https://codecov.io/gh/Ebedthan/sabreur">
+    <img alt="Coverage" src="https://codecov.io/gh/Ebedthan/sabreur/branch/main/graph/badge.svg">
+  </a>
+  <a href="https://github.com/Ebedthan/sabreur">
+    <img alt="Rust version" src="https://img.shields.io/badge/rust-1.78.0%2B-blue.svg?maxAge=3600">
+  </a>
+  <a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat">
+  </a>
+</p>
 
-With next-generation sequencing tools capabilities, millions to billions of reads are generated. To reach such a rate in a cost-efficient manner, barcoding individual sequences for multiple lines or species is a common practice.
+<p align="center">
+  <img src="img/sabreur.png" alt="sabreur logo" width="300">
+</p>
 
-Sabreur is a tool that aims to demultiplex barcoded reads into separate files. It supports both fasta and fastq files. Input files can be gzip, bzip2 or xz compressed in input or output (Thanks to the awesome [niffler crate](https://github.com/luizirber/niffler)). If an uncompressed file is provided the output is by default uncompressed. But this behaviour can be changed by settingn the `--format` option to the desired compress format. The `--format` option if specified while input files are compressed changes output files to the specified compress format. Sabreur in its core compares the provided barcodes with each read, then separates the read into its appropriate file. If a read does not have a recognized barcode, then it is put into an unknown file.
+---
 
+## 🔎 About
 
-## How to use sabreur
+**sabreur** is a command-line tool designed to **demultiplex barcoded sequencing reads** into separate files. It supports:
 
-### Paired-end mode
-```
+- **FASTA** and **FASTQ** formats
+- **Compressed inputs and outputs**: `gzip`, `bzip2`, `xz`, and `zstd`
+- **Paired-end** and **Single-end** reads
+
+It uses a barcode file to match reads and dispatches each to the corresponding output. Reads with unknown barcodes go into a separate file.
+
+Powered by [niffler](https://github.com/luizirber/niffler) for seamless compression support.
+
+---
+
+## 🚀 Usage
+
+### ▶️ Paired-end mode
+
+```bash
 sabreur barcode.txt input_R1.fq.gz input_R2.fq.gz
 ```
-
-### Single-end mode
-```
+### ▶️ Single-end mode
+```bash
 sabreur barcode.txt input.fq
 ```
 
-Input sequences files can be fasta or fastq, compressed or not.
-The supported compression format are gz, bz2, xz and zst.
-Just give the sequences, sabreur know how to handle it!
+sabreur automatically detects the format and compression. Just provide the inputs!
 
-## Command-line arguments
-
+## ⚙️ Command-Line Options
 ```
 USAGE:
     sabreur [options] <BARCODE> <FORWARD FILE> [<REVERSE FILE>]
@@ -58,6 +73,9 @@ OPTIONS:
     -V, --version           Print version information
 
 ```
+
+## 📦 Installation
+
 
 ## Requirements
 - [Rust](https://rust-lang.org) in stable channel
@@ -88,7 +106,7 @@ cargo install --path .
 
 ## Benchmark
 
-We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with this [dataset](https://figshare.com/articles/dataset/Paired-end_fastq_files_for_demultiplexing/14701629).
+Benchmarked with [hyperfine](https://github.com/sharkdp/hyperfine) [dataset](https://figshare.com/articles/dataset/Paired-end_fastq_files_for_demultiplexing/14701629).
 
 
 | Tool  | Single-end uncompressed output | Single-end compressed output | Paired-end uncompressed output | Paired-end compressed output |
@@ -98,18 +116,21 @@ We used [hyperfine](https://github.com/sharkdp/hyperfine) for benchmarking with 
 | **sabreur** | 10.843 ± 0.531| 93.840 ± 0.446    | 40.878 ± 13.743     | 187.533 ± 0.572   |
 
 
+### 🗜️ Compression format performance
 
-A simple benchmark of the different compression format, zst being the fastest.
+A simple benchmark of the different compression format (`sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz`), zst being the fastest.
+
 | Command | Mean [s] | Min [s] | Max [s] | Relative |
 |:---|---:|---:|---:|---:|
-| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format zst` | 43.096 ± 1.547 | 41.179 | 46.878 | 1.00 |
-| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format bz2` | 94.049 ± 4.762 | 87.984 | 101.140 | 2.18 ± 0.14 |
-| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz (--format gz)` | 123.107 ± 1.748 | 120.529 | 125.166 | 2.86 ± 0.11 |
-| `sabreur tests/bc_pe_fq.txt tests/input_R1.fastq.gz tests/input_R2.fastq.gz --format xz` | 285.692 ± 18.625 | 264.960 | 325.750 | 6.63 ± 0.49 |
+| `--format zst` | 43.096 ± 1.547 | 41.179 | 46.878 | 1.00 |
+| `--format bz2` | 94.049 ± 4.762 | 87.984 | 101.140 | 2.18 ± 0.14 |
+| `--format gz` | 123.107 ± 1.748 | 120.529 | 125.166 | 2.86 ± 0.11 |
+| `--format xz` | 285.692 ± 18.625 | 264.960 | 325.750 | 6.63 ± 0.49 |
 
 
-## Note
-Sabreur use a special barcode tab-delimited file format in the form:
+## 📄 Barcode File Format
+
+The barcode file must be tab-delimited in the format:
 
 ```
 barcode1    barcode1_file1.fq   barcode1_file2.fq
@@ -117,21 +138,19 @@ barcode2    barcode2_file1.fq   barcode2_file2.fq
 ...
 ```
 
+Output filenames must be unique. You can use .fq, .fastq, .fa, or .fasta as extensions.
+
 ### Minimum supported Rust version
 `sabreur` minimum [Rust](https://www.rust-lang.org/) version is 1.78.0.
 
-## Contributions
-Contributions are welcomed under the project [code of conduct](https://github.com/Ebedthan/sabreur#code-of-conduct).
+## 🤝 Contributing
 
-## Bugs
-Submit problems or requests to the [Issue Tracker](https://github.com/Ebedthan/sabreur/issues).
+- Contributions are welcome under the [Contributor Code of Conduct](https://github.com/Ebedthan/sabreur/blob/main/CODE_OF_CONDUCT.md).
+- Please open an [issue or pull request on GitHub](https://github.com/Ebedthan/sabreur/issues).
 
-## Code of conduct
-Please note that the sabreur project is released with a [Contributor Code of Conduct](https://github.com/Ebedthan/sabreur/blob/main/CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+## 🐛 Bugs & Support
 
+Found a bug or have a feature request? → [Open an issue](https://github.com/Ebedthan/sabreur/issues).
 
-<p align="center">
-    <a href="https://github.com/Ebedthan/sabreur">
-        <img src="img/sabreur.png" width="300">
-    </a>
-</p>
+## 📜 License
+This project is licensed under the MIT License.
