@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::utils::{bc_cmp, write_seqs};
+use crate::utils::{best_barcode_match, write_seqs};
 
 pub type Barcode<'a> = HashMap<&'a [u8], Vec<std::fs::File>>;
 
@@ -56,15 +56,11 @@ pub fn se_demux<'a>(
 
         let seq = record.seq();
         let matched = (seq.len() >= bc_len)
-            .then(|| {
-                barcodes
-                    .iter()
-                    .find(|&&bc| bc_cmp(bc, &seq[..bc_len], mismatch))
-            })
+            .then(|| best_barcode_match(&barcodes, &seq[..bc_len], mismatch))
             .flatten();
 
         match matched {
-            Some(&bc) => {
+            Some(bc) => {
                 *nb_records.entry(bc).or_insert(0) += 1;
                 write_seqs(&barcode_data[bc][0], format, &record, level)?;
             }
@@ -141,15 +137,11 @@ pub fn pe_demux<'a>(
 
         let fwd_seq = fwd_record.seq();
         let matched = (fwd_seq.len() >= bc_len)
-            .then(|| {
-                barcodes
-                    .iter()
-                    .find(|&&x| bc_cmp(x, &fwd_seq[..bc_len], mismatch))
-            })
+            .then(|| best_barcode_match(&barcodes, &fwd_seq[..bc_len], mismatch))
             .flatten();
 
         match matched {
-            Some(&bc) => {
+            Some(bc) => {
                 *nb_records.entry(bc).or_insert(0) += 1;
                 write_seqs(&barcode_data[bc][0], compression, &fwd_record, level)?;
                 write_seqs(&barcode_data[bc][1], compression, &rev_record, level)?;

@@ -111,6 +111,43 @@ pub fn split_by_tab(string: &str) -> anyhow::Result<Vec<Vec<&str>>> {
     }
 }
 
+// Apply a best-match algorithm to find the barcode with the fewest mismatches
+pub fn best_barcode_match<'a>(
+    barcodes: &[&'a [u8]],
+    seq: &[u8],
+    max_mismatch: u8,
+) -> Option<&'a [u8]> {
+    let mut best: Option<(u8, &'a [u8])> = None;
+    let mut tied = false;
+
+    for &bc in barcodes {
+        let mismatches = bc
+            .iter()
+            .zip(seq.iter())
+            .map(|(a, b)| (a != b) as u8)
+            .sum::<u8>();
+        if mismatches > max_mismatch {
+            continue;
+        }
+
+        match best {
+            None => best = Some((mismatches, bc)),
+            Some((best_count, _)) if mismatches < best_count => {
+                best = Some((mismatches, bc));
+                tied = false;
+            }
+            Some((best_count, _)) if mismatches == best_count => tied = true,
+            _ => {}
+        }
+    }
+
+    if tied {
+        None
+    } else {
+        best.map(|(_, bc)| bc)
+    }
+}
+
 // Compare provided barcode with a sequence
 pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
     // This wonderful line below compute the number of
@@ -153,6 +190,77 @@ pub fn write_seqs(
             needletail::parser::LineEnding::Unix,
         ),
     }?;
+
+    Ok(())
+}
+
+const IUPAC_CODES: &[u8] = b"ACGTUNRYSWKMBDHV";
+
+// Validates the fields of a barcode file, ensuring it has the correct number of columns,
+// contains only valid IUPAC nucleotide codes, and has unique barcodes.
+pub fn validate_barcode_fields(fields: &[Vec<&str>], paired: bool) -> anyhow::Result<()> {
+    if fields.is_empty() {
+        return Err(anyhow!("Barcode file is empty"));
+    }
+
+    let expected_cols = if paired { 3 } else { 2 };
+    let mut seen_barcodes: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut bc_len: Option<usize> = None;
+
+    for (idx, row) in fields.iter().enumerate() {
+        let line_no = idx + 1;
+
+        if row.len() != expected_cols {
+            return Err(anyhow!(
+                "Barcode file line {}: expected {} tab-separated column(s) ({}), found {}",
+                line_no,
+                expected_cols,
+                if paired {
+                    "barcode, forward sample name, reverse sample name"
+                } else {
+                    "barcode, sample name"
+                },
+                row.len()
+            ));
+        }
+
+        let barcode = row[0];
+
+        if row.iter().any(|field| field.is_empty()) {
+            return Err(anyhow!(
+                "Barcode file line {}: contains an empty field",
+                line_no
+            ));
+        }
+
+        if barcode.eq_ignore_ascii_case("XXX") {
+            return Err(anyhow!("Barcode file line {}: 'XXX' is reserved internally for unknown/unmatched reads and cannot be used as a barcode", line_no));
+        }
+
+        if !barcode
+            .bytes()
+            .all(|b| IUPAC_CODES.contains(&b.to_ascii_uppercase()))
+        {
+            return Err(anyhow!("Barcode file line {}: barcode '{}' contains characters that are not valid IUPAC nucleotide codes", line_no, barcode));
+        }
+
+        match bc_len {
+            None => bc_len = Some(barcode.len()),
+            Some(len) if len != barcode.len() => {
+                return Err(anyhow!("Barcode file line {}: barcode '{}' has length {}, but earlier barcodes in this file have length {}. All barcodes must be the same length.",
+                    line_no, barcode, barcode.len(), len));
+            }
+            _ => {}
+        }
+
+        if !seen_barcodes.insert(barcode) {
+            return Err(anyhow!(
+                "Barcode file line {}: barcode '{}' appears more than once",
+                line_no,
+                barcode
+            ));
+        }
+    }
 
     Ok(())
 }
