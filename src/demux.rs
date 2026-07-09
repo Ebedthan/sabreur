@@ -96,29 +96,49 @@ pub fn pe_demux<'a>(
         compression = format;
     }
 
-    // Process forward reads
+    // Process forward and reverse reads together. Using a lockstep so that mates
+    // always stay paired. The barcode is looked up from the forward read only (R1),
+    // and the resulting alignment (a barcode, or "unknown") is applied to BOTH mates.
+    // This keeps output files synchronized.
     let mut unk1_empty = true;
-    while let Some(Ok(record)) = forward_fastx_reader.next() {
-        let seq_slice = &record.seq()[..bc_len];
-        if let Some(i) = barcodes.iter().find(|&&x| bc_cmp(x, seq_slice, mismatch)) {
-            *nb_records.entry(i).or_insert(0) += 1;
-            write_seqs(&barcode_data[i][0], compression, &record, level)?;
-        } else {
-            unk1_empty = false;
-            write_seqs(&unknown_files[0], compression, &record, level)?;
-        }
-    }
-
-    // Process reverse reads
     let mut unk2_empty = true;
-    while let Some(Ok(record)) = reverse_fastx_reader.next() {
-        let seq_slice = &record.seq()[..bc_len];
-        if let Some(i) = barcodes.iter().find(|&&x| bc_cmp(x, seq_slice, mismatch)) {
-            *nb_records.entry(i).or_insert(0) += 1;
-            write_seqs(&barcode_data[i][1], compression, &record, level)?;
-        } else {
-            unk2_empty = false;
-            write_seqs(&unknown_files[1], compression, &record, level)?;
+
+    loop {
+        let fwd_item = forward_fastx_reader.next();
+        let rev_item = reverse_fastx_reader.next();
+
+        let (fwd_record, rev_record) = match (fwd_item, rev_item) {
+            (Some(f), Some(r)) => (f?, r?),
+            (None, None) => break,
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Forward and reverse files have a different number of \
+                    records. They are not properly paired."
+                ));
+            }
+        };
+
+        let fwd_seq = fwd_record.seq();
+        let matched = (fwd_seq.len() >= bc_len)
+            .then(|| {
+                barcodes
+                    .iter()
+                    .find(|&&x| bc_cmp(x, &fwd_seq[..bc_len], mismatch))
+            })
+            .flatten();
+
+        match matched {
+            Some(&bc) => {
+                *nb_records.entry(bc).or_insert(0) += 1;
+                write_seqs(&barcode_data[bc][0], compression, &fwd_record, level)?;
+                write_seqs(&barcode_data[bc][1], compression, &rev_record, level)?;
+            }
+            None => {
+                unk1_empty = false;
+                unk2_empty = false;
+                write_seqs(&unknown_files[0], compression, &fwd_record, level)?;
+                write_seqs(&unknown_files[1], compression, &rev_record, level)?;
+            }
         }
     }
 
