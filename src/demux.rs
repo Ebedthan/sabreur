@@ -49,9 +49,14 @@ pub fn se_demux<'a>(
     while let Some(record) = reader.next() {
         let record = record?;
 
-        let matched = barcodes
-            .iter()
-            .find(|&&bc| bc_cmp(bc, &record.seq()[..bc_len], mismatch));
+        let seq = record.seq();
+        let matched = (seq.len() >= bc_len)
+            .then(|| {
+                barcodes
+                    .iter()
+                    .find(|&&bc| bc_cmp(bc, &seq[..bc_len], mismatch))
+            })
+            .flatten();
 
         match matched {
             Some(&bc) => {
