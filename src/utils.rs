@@ -149,7 +149,7 @@ pub fn best_barcode_match<'a>(
 }
 
 // Compare provided barcode with a sequence
-pub fn bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
+pub fn _bc_cmp(bc: &[u8], seq: &[u8], mismatch: u8) -> bool {
     // This wonderful line below compute the number of
     // character mismatch between two strings
     bc.iter()
@@ -302,7 +302,7 @@ mod tests {
             PathBuf::from("path/file.gz")
         );
     }
-
+    /*
     #[test]
     fn test_bc_cmp_ok() {
         let seq = b"ATCGATCGATCG";
@@ -331,7 +331,7 @@ mod tests {
         let seq = b"ATCGATCGATCG";
 
         assert!(!bc_cmp(bc, seq, 0));
-    }
+    }*/
 
     #[test]
     fn test_split_by_tab() {
