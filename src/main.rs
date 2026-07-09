@@ -4,7 +4,8 @@
 // to those terms.
 
 use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
+use std::fs;
+use std::io::Write;
 use std::process;
 use std::time::Instant;
 
@@ -25,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     let forward_format = utils::which_format(&cli.forward)?;
     let mut output_format = forward_format;
     let mismatch = cli.mismatch;
-    let raw_level = cli.level;
+    let level = utils::to_niffler_level(cli.level);
 
     // Handle compression
     if let Some(fmt_str) = cli.format {
@@ -43,11 +44,19 @@ fn main() -> anyhow::Result<()> {
         if is_pe { "paired-end" } else { "single-end" }
     );
 
-    // validate barcode file
+    // Read and validate the barcode file up front, before touching the
+    // output directory, so a malformed barcode file fails fast without
+    // side effects on disk.
     let barcode_content = fs::read_to_string(&cli.barcode)?;
     let barcode_fields = utils::split_by_tab(&barcode_content)?;
     utils::validate_barcode_fields(&barcode_fields, is_pe)
         .with_context(|| format!("Invalid barcode file '{}'", cli.barcode))?;
+    let mut barcode_info: demux::Barcode = HashMap::new();
+    let mut record_stats: HashMap<&[u8], u32> = HashMap::new();
+
+    if mismatch != 0 {
+        warn!("Allowing up to {} mismatches", mismatch);
+    }
 
     // Output directory handling
     if cli.output.exists() {
@@ -75,21 +84,18 @@ fn main() -> anyhow::Result<()> {
         )
     })?;
 
-    // Read barcode file
-    let barcode_content = fs::read_to_string(&cli.barcode)?;
-    let barcode_fields = utils::split_by_tab(&barcode_content)?;
-    let mut barcode_info: demux::Barcode = HashMap::new();
-    let mut record_stats: HashMap<&[u8], u32> = HashMap::new();
-
-    if mismatch != 0 {
-        warn!("Allowing up to {} mismatches", mismatch);
-    }
-
-    // Helper to create writer
-    let create_writer = |name: &str, format| -> anyhow::Result<_> {
-        let path = utils::create_relpath_from(&cli.output, name, format);
-        Ok(OpenOptions::new().create(true).append(true).open(path)?)
-    };
+    // Helper to create a persistent, per-output-file writer. Each writer is
+    // opened and wrapped with its compressor exactly once here, then reused
+    // for every record written to that file, this is what avoids
+    // re-creating a compressor per record. Return type must match
+    // utils::create_output_writer exactly: Box<dyn Write + Send>, wrapped
+    // in anyhow::Result (not niffler::Error -- anyhow converts it via `?`
+    // inside create_output_writer already).
+    let create_writer =
+        |name: &str, format| -> anyhow::Result<Box<dyn std::io::Write + Send + 'static>> {
+            let path = utils::create_relpath_from(&cli.output, name, format);
+            utils::create_output_writer(&path, format, level)
+        };
 
     // Main processing
     if let Some(reverse_path) = &cli.reverse {
@@ -108,22 +114,14 @@ fn main() -> anyhow::Result<()> {
             utils::create_relpath_from(&cli.output, "unknown_R1.fa", output_format);
         let unknown_rev_path =
             utils::create_relpath_from(&cli.output, "unknown_R2.fa", reverse_format);
-        let unknown_fwd = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&unknown_fwd_path)?;
-        let unknown_rev = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&unknown_rev_path)?;
+        let unknown_fwd = utils::create_output_writer(&unknown_fwd_path, output_format, level)?;
+        let unknown_rev = utils::create_output_writer(&unknown_rev_path, reverse_format, level)?;
         barcode_info.insert(b"XXX", vec![unknown_fwd, unknown_rev]);
 
         let (stats, unk_status) = demux::pe_demux(
             &cli.forward,
             reverse_path,
-            output_format,
-            utils::to_niffler_level(raw_level),
-            &barcode_info,
+            &mut barcode_info,
             mismatch,
             &mut record_stats,
         )?;
@@ -135,6 +133,16 @@ fn main() -> anyhow::Result<()> {
                     count,
                     String::from_utf8_lossy(barcode)
                 );
+            }
+        }
+
+        // Flush every writer now, before deciding which (if any) unknown
+        // files to delete. Writers are held open for the whole run for
+        // performance, so nothing is guaranteed to be fully on disk until
+        // this point.
+        for files in barcode_info.values_mut() {
+            for writer in files.iter_mut() {
+                writer.flush().context("Failed to flush an output file")?;
             }
         }
 
@@ -155,20 +163,11 @@ fn main() -> anyhow::Result<()> {
 
         let unknown_path = utils::create_relpath_from(&cli.output, "unknown.fa", output_format);
         let future_unk = unknown_path.clone();
-        let unknown_writer = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&unknown_path)?;
+        let unknown_writer = utils::create_output_writer(&unknown_path, output_format, level)?;
         barcode_info.insert(b"XXX", vec![unknown_writer]);
 
-        let (stats, unk_empty) = demux::se_demux(
-            &cli.forward,
-            output_format,
-            utils::to_niffler_level(raw_level),
-            &barcode_info,
-            mismatch,
-            &mut record_stats,
-        )?;
+        let (stats, unk_empty) =
+            demux::se_demux(&cli.forward, &mut barcode_info, mismatch, &mut record_stats)?;
 
         if !cli.quiet {
             for (barcode, count) in stats {
@@ -177,6 +176,14 @@ fn main() -> anyhow::Result<()> {
                     count,
                     String::from_utf8_lossy(barcode)
                 );
+            }
+        }
+
+        // Flush every writer now that all records have been written. See
+        // the equivalent comment in the paired-end branch above.
+        for files in barcode_info.values_mut() {
+            for writer in files.iter_mut() {
+                writer.flush().context("Failed to flush an output file")?;
             }
         }
 

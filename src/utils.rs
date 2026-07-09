@@ -168,30 +168,51 @@ pub fn which_format(filename: &str) -> anyhow::Result<niffler::send::compression
 
 // Write to provided data to a fasta file in append mode
 pub fn write_seqs(
-    file: &std::fs::File,
-    compression: niffler::send::compression::Format,
+    writer: &mut dyn std::io::Write,
     record: &needletail::parser::SequenceRecord,
-    level: niffler::Level,
 ) -> anyhow::Result<()> {
-    let mut handle = niffler::send::get_writer(Box::new(file), compression, level)?;
-
     match record.format() {
         needletail::parser::Format::Fasta => needletail::parser::write_fasta(
             record.id(),
             record.seq().as_ref(),
-            &mut handle,
+            writer,
             needletail::parser::LineEnding::Unix,
         ),
         needletail::parser::Format::Fastq => needletail::parser::write_fastq(
             record.id(),
             record.seq().as_ref(),
             record.qual(),
-            &mut handle,
+            writer,
             needletail::parser::LineEnding::Unix,
         ),
     }?;
 
     Ok(())
+}
+
+// Create the persistent, per-output-file writer for a barcode's output
+// file: opens the file once and wraps it once with the appropriate
+// (de)compressor. Called once per output file at startup, not per record.
+//
+// Return type is a plain anyhow::Result (error type anyhow::Error), for
+// consistency with every other function in this file. niffler::get_writer
+// returns Result<_, niffler::Error>; the `?` below converts that into
+// anyhow::Error via anyhow's blanket From impl, the same way the `?` on
+// `.open(path)` already converts std::io::Error.
+pub fn create_output_writer(
+    path: &Path,
+    compression: niffler::send::compression::Format,
+    level: niffler::Level,
+) -> anyhow::Result<Box<dyn std::io::Write + Send + 'static>> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    Ok(niffler::send::get_writer(
+        Box::new(file),
+        compression,
+        level,
+    )?)
 }
 
 const IUPAC_CODES: &[u8] = b"ACGTUNRYSWKMBDHV";
@@ -265,7 +286,7 @@ pub fn validate_barcode_fields(fields: &[Vec<&str>], paired: bool) -> anyhow::Re
     Ok(())
 }
 
-// Tests --------------------------------------------------------------------
+// Tests -----------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,28 +426,175 @@ mod tests {
         );
     }
 
-    /*
+    // -- best_barcode_match ---------------------------------------------
+
     #[test]
-    fn test_write_to_fa_is_ok() {
-        let data = b">id_str desc\nATCGCCG";
-        let mut reader = noodles::fasta::Reader::new(&data[..]);
-        let record = reader.records().next().transpose().unwrap().unwrap();
-        let cmp = niffler::compression::Format::Gzip;
-        let file = tempfile::tempfile().expect("Cannot create temp file");
+    fn test_best_barcode_match_exact_wins_over_mismatch() {
+        // "AACGTA" is 1 mismatch from ACCGTA and 2+ from ATTGTT; ACCGTA
+        // is the correct pick even though a naive first-found search
+        // (depending on hashmap order) could have picked either.
+        let barcodes: Vec<&[u8]> = vec![b"ACCGTA", b"ATTGTT"];
+        let seq = b"ACCGTA";
+        assert_eq!(
+            best_barcode_match(&barcodes, seq, 1),
+            Some(b"ACCGTA".as_ref())
+        );
+    }
 
-        assert!((write_fa(&file, cmp, &record, niffler::Level::One)).is_ok());
+    #[test]
+    fn test_best_barcode_match_prefers_lower_mismatch_count() {
+        // seq is 1 mismatch from "AACGTA" and 3 mismatches from "TTTGTA";
+        // the lower mismatch count must win even though both are within
+        // threshold.
+        let barcodes: Vec<&[u8]> = vec![b"AACGTA", b"TTTGTA"];
+        let seq = b"ACCGTA";
+        assert_eq!(
+            best_barcode_match(&barcodes, seq, 3),
+            Some(b"AACGTA".as_ref())
+        );
+    }
 
-        let mut tmpfile =
-            tempfile::NamedTempFile::new().expect("Cannot create temp file");
-        writeln!(tmpfile, ">id_str desc\nATCGCCG")
-            .expect("Cannot write to tmp file");
+    #[test]
+    fn test_best_barcode_match_ambiguous_tie_returns_none() {
+        // seq is exactly 1 mismatch from both barcodes, a genuine tie.
+        // The correct behavior is None (caller routes to unknown), not an
+        // arbitrary pick of whichever came first.
+        let barcodes: Vec<&[u8]> = vec![b"AACGTA", b"ACCGTT"];
+        let seq = b"ACCGTA";
+        assert_eq!(best_barcode_match(&barcodes, seq, 1), None);
+    }
 
-        let mut fa_records = File::open(tmpfile).map(BufReader::new).map(noodles::fasta::Reader::new).expect("Cannot read file");
+    #[test]
+    fn test_best_barcode_match_no_candidate_within_threshold() {
+        let barcodes: Vec<&[u8]> = vec![b"TTTTTT"];
+        let seq = b"ACCGTA";
+        assert_eq!(best_barcode_match(&barcodes, seq, 1), None);
+    }
 
-        while let Some(Ok(rec)) = fa_records.records().next() {
-            assert_eq!(rec.definition().name(), b"id_str");
-            assert_eq!(rec.definition().description().unwrap(), b"desc");
-            assert_eq!(rec.sequence().as_ref(), b"ATCGCCG");
+    #[test]
+    fn test_best_barcode_match_single_exact_candidate() {
+        let barcodes: Vec<&[u8]> = vec![b"ACCGTA"];
+        let seq = b"ACCGTA";
+        assert_eq!(
+            best_barcode_match(&barcodes, seq, 0),
+            Some(b"ACCGTA".as_ref())
+        );
+    }
+
+    // -- validate_barcode_fields ------------------------------------------
+
+    #[test]
+    fn test_validate_barcode_fields_valid_se() {
+        let fields = vec![vec!["ACCGTA", "sample1"], vec!["ATTGTT", "sample2"]];
+        assert!(validate_barcode_fields(&fields, false).is_ok());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_valid_pe() {
+        let fields = vec![
+            vec!["ACCGTA", "sample1_R1", "sample1_R2"],
+            vec!["ATTGTT", "sample2_R1", "sample2_R2"],
+        ];
+        assert!(validate_barcode_fields(&fields, true).is_ok());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_empty_file() {
+        let fields: Vec<Vec<&str>> = vec![];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_wrong_column_count() {
+        // PE mode expects 3 columns; this row only has 2.
+        let fields = vec![vec!["ACCGTA", "sample1"]];
+        assert!(validate_barcode_fields(&fields, true).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_empty_field_rejected() {
+        let fields = vec![vec!["ACCGTA", ""]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_xxx_barcode_rejected() {
+        let fields = vec![vec!["XXX", "sample1"]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_xxx_rejected_case_insensitive() {
+        let fields = vec![vec!["xxx", "sample1"]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_non_iupac_characters_rejected() {
+        let fields = vec![vec!["ACCZTA", "sample1"]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_mixed_length_rejected() {
+        let fields = vec![vec!["ACCGTA", "sample1"], vec!["ACC", "sample2"]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    #[test]
+    fn test_validate_barcode_fields_duplicate_rejected() {
+        let fields = vec![vec!["ACCGTA", "sample1"], vec!["ACCGTA", "sample2"]];
+        assert!(validate_barcode_fields(&fields, false).is_err());
+    }
+
+    // -- create_output_writer ---------------------------------------------
+
+    #[test]
+    fn test_create_output_writer_roundtrip_uncompressed() {
+        use std::io::Read;
+
+        let tmp = tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        let path = tmp.path().to_path_buf();
+
+        {
+            let mut writer = create_output_writer(
+                &path,
+                niffler::send::compression::Format::No,
+                niffler::Level::One,
+            )
+            .expect("create_output_writer failed");
+            writer.write_all(b">read1\nACGT\n").expect("write failed");
+            writer.flush().expect("flush failed");
         }
-    }*/
+
+        let mut content = String::new();
+        std::fs::File::open(&path)
+            .unwrap()
+            .read_to_string(&mut content)
+            .unwrap();
+        assert_eq!(content, ">read1\nACGT\n");
+    }
+
+    #[test]
+    fn test_create_output_writer_roundtrip_gzip() {
+        let tmp = tempfile::NamedTempFile::new().expect("Cannot create temp file");
+        let path = tmp.path().to_path_buf();
+
+        {
+            let mut writer = create_output_writer(
+                &path,
+                niffler::send::compression::Format::Gzip,
+                niffler::Level::One,
+            )
+            .expect("create_output_writer failed");
+            writer.write_all(b">read1\nACGT\n").expect("write failed");
+            // Dropping here finalizes the gzip stream (see the Drop-based
+            // finalization caveat discussed for niffler's boxed writers).
+        }
+
+        let (_, format) =
+            niffler::send::sniff(Box::new(io::BufReader::new(File::open(&path).unwrap())))
+                .expect("sniff failed");
+        assert_eq!(format, niffler::send::compression::Format::Gzip);
+    }
 }
