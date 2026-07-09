@@ -27,14 +27,19 @@ pub fn se_demux<'a>(
         format = original_format;
     }
 
-    // Assume all barcodes have same length
-    let Some(&first_key) = barcode_data.keys().next() else {
+    // Cache barcode keys (avoid repeated hashmap lookups)
+    let mut barcodes: Vec<&[u8]> = barcode_data
+        .keys()
+        .copied()
+        .filter(|&k| k != b"XXX".as_ref())
+        .collect();
+    barcodes.sort_unstable();
+
+    let Some(&first_key) = barcodes.first() else {
         return Err(anyhow::anyhow!("Barcode data is empty"));
     };
-    let bc_len = first_key.len();
 
-    // Cache barcode keys (avoid repeated hashmap lookups)
-    let barcodes: Vec<&[u8]> = barcode_data.keys().copied().collect();
+    let bc_len = first_key.len();
 
     // Track whether unknown file has data
     let mut is_unk_empty = true;
@@ -91,8 +96,19 @@ pub fn pe_demux<'a>(
     let mut reverse_fastx_reader = needletail::parse_fastx_reader(reverse_reader)?;
 
     // Get barcode information once
-    let barcodes: Vec<&[u8]> = barcode_data.keys().copied().collect();
-    let bc_len = barcodes[0].len();
+    // pe_demux
+    let mut barcodes: Vec<&[u8]> = barcode_data
+        .keys()
+        .copied()
+        .filter(|&k| k != b"XXX".as_ref())
+        .collect();
+    barcodes.sort_unstable();
+
+    let Some(&first_barcode) = barcodes.first() else {
+        return Err(anyhow::anyhow!("Barcode data is empty"));
+    };
+
+    let bc_len = first_barcode.len();
     let unknown_key = "XXX".as_bytes();
     let unknown_files = barcode_data.get(unknown_key).unwrap();
 
