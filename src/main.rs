@@ -17,8 +17,6 @@ mod cli;
 mod demux;
 mod utils;
 
-// TODO: Check if supplied barcode file for se or pe is properly
-// formated before giving it to the demultiplexing function
 fn main() -> anyhow::Result<()> {
     let start_time = Instant::now();
     let cli = Cli::parse();
@@ -44,6 +42,12 @@ fn main() -> anyhow::Result<()> {
         "sabreur v0.7 starting up in {} mode",
         if is_pe { "paired-end" } else { "single-end" }
     );
+
+    // validate barcode file
+    let barcode_content = fs::read_to_string(&cli.barcode)?;
+    let barcode_fields = utils::split_by_tab(&barcode_content)?;
+    utils::validate_barcode_fields(&barcode_fields, is_pe)
+        .with_context(|| format!("Invalid barcode file '{}'", cli.barcode))?;
 
     // Output directory handling
     if cli.output.exists() {
